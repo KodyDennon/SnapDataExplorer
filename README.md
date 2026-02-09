@@ -104,7 +104,7 @@ Your processed data is stored locally at:
 |-------|------------|
 | Frontend | React 19, TypeScript, Tailwind CSS, react-virtuoso |
 | Backend | Rust, Tauri v2, SQLite (FTS5), kuchikiki HTML parser |
-| Build | Vite, Cargo, GitHub Actions CI/CD |
+| Build | Vite, Cargo, GitHub Actions CI/CD, semantic-release |
 
 ## License
 

@@ -23,6 +23,9 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - run: npm ci
 
       - name: Run semantic-release

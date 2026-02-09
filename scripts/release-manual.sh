@@ -1,9 +1,13 @@
 #!/bin/bash
 
+# MANUAL FALLBACK — Normally releases are automated via semantic-release.
+# Only use this if CI is broken and you need an emergency release.
+# See CONTRIBUTING.md for the standard release process.
+
 # Check if a version argument is provided
 if [ -z "$1" ]; then
-  echo "Usage: ./release.sh <version>"
-  echo "Example: ./release.sh 0.1.1"
+  echo "Usage: ./scripts/release-manual.sh <version>"
+  echo "Example: ./scripts/release-manual.sh 0.3.0"
   exit 1
 fi
 

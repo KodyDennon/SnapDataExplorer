@@ -21,6 +21,20 @@ Thank you for your interest in contributing!
    npm run tauri dev
    ```
 
+## Commit Convention
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and automated releases via [semantic-release](https://semantic-release.gitbook.io/). Your commit messages determine the next version number automatically:
+
+| Prefix | Example | Version Bump |
+|--------|---------|--------------|
+| `fix:` | `fix: prevent crash on empty export` | Patch (0.2.0 -> 0.2.1) |
+| `feat:` | `feat: add date range filter` | Minor (0.2.0 -> 0.3.0) |
+| `feat!:` | `feat!: redesign import flow` | Major (0.2.0 -> 1.0.0) |
+| `chore:` | `chore: update dependencies` | No release |
+| `docs:` | `docs: update README` | No release |
+
+You can also trigger a major bump with a `BREAKING CHANGE:` footer in the commit body.
+
 ## Code Style
 
 - **Rust**: Follow `rustfmt` defaults. Run `cargo fmt` before committing.
@@ -33,25 +47,41 @@ Thank you for your interest in contributing!
 All of the following must pass before submitting a PR:
 
 ```bash
-# Rust tests
-cargo test
-
-# Rust linting (zero warnings required)
-cargo clippy -- -D warnings
-
-# Rust formatting check
-cargo fmt --check
+# Frontend tests
+npm test
 
 # TypeScript type check
 npx tsc --noEmit
+
+# Rust tests
+cd src-tauri && cargo test
+
+# Rust linting (zero warnings required)
+cd src-tauri && cargo clippy -- -D warnings
+
+# Rust formatting check
+cd src-tauri && cargo fmt --check
 ```
 
 ## Pull Request Process
 
 1. Fork the repository and create a feature branch from `main`
-2. Make your changes with clear, descriptive commits
+2. Make your changes using conventional commit messages (see above)
 3. Ensure all checks pass (see above)
 4. Submit a PR with a clear description of the changes and motivation
+
+## Release Process
+
+Releases are fully automated. When commits are merged to `main`:
+
+1. **semantic-release** analyzes commit messages and determines the version bump
+2. All version files are updated automatically (`package.json`, `Cargo.toml`, `tauri.conf.json`)
+3. `CHANGELOG.md` is generated from commit messages
+4. A git tag is created and pushed
+5. GitHub Actions builds platform binaries (macOS ARM/Intel, Windows, Linux)
+6. A draft GitHub Release is created with binaries attached
+
+No manual version bumping is needed. Just write good commit messages.
 
 ## Architecture
 
