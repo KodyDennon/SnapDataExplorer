@@ -1,0 +1,40 @@
+[package]
+name = "snap-data-explorer-app"
+version = "0.1.0"
+description = "Privacy-first desktop app for exploring Snapchat data exports"
+authors = ["Kody Dennon"]
+edition = "2021"
+license = "LicenseRef-Custom"
+repository = "https://github.com/KodyDennon/SnapDataExplorer"
+homepage = "https://github.com/KodyDennon/SnapDataExplorer"
+keywords = ["snapchat", "data-export", "privacy", "tauri", "desktop"]
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "snap_data_explorer_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.38.0", features = ["bundled"] }
+chrono = { version = "0.4.42", features = ["serde"] }
+thiserror = "2.0.17"
+tauri-plugin-dialog = "2.4.2"
+kuchikiki = "0.8.8-speedreader"
+uuid = { version = "1.19.0", features = ["v4"] }
+zip = "7.0.0"
+dirs = "6.0.0"
+log = "0.4"
+simplelog = "0.12"
+
+[dev-dependencies]
+tempfile = "3"
+
