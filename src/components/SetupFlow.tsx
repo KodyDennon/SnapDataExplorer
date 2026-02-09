@@ -112,226 +112,258 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-surface-950/95 backdrop-blur-xl flex items-center justify-center p-8">
-      <Card variant="elevated" padding="none" className="max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh]">
+      <Card variant="elevated" padding="none" className="max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh] shadow-2xl border-surface-800">
         {/* Header */}
-        <div className="p-10 border-b border-surface-100 dark:border-surface-800 bg-gradient-to-br from-surface-50 to-white dark:from-surface-800 dark:to-surface-900">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25">
-              <img src="/logo.png" alt="" className="w-9 h-9 object-contain" />
+        <div className="p-8 border-b border-surface-100 dark:border-surface-800 bg-gradient-to-br from-surface-50 to-white dark:from-surface-800 dark:to-brand-950/20">
+          <div className="flex items-center gap-5 mb-2">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 shrink-0">
+              <img src="/logo.png" alt="" className="w-10 h-10 object-contain" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-surface-900 dark:text-white">
+              <h1 className="text-3xl font-bold text-surface-900 dark:text-white tracking-tight">
                 Welcome to Snap Explorer
               </h1>
-              <p className="text-surface-500 dark:text-surface-400">
-                Import your Snapchat data to begin
+              <p className="text-surface-500 dark:text-surface-400 text-lg">
+                Reconstruct and explore your digital history.
               </p>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
           {/* How-to guidance */}
           {!progress && !importResult && (
-            <div className="bg-brand-50 dark:bg-brand-950/30 border border-brand-100 dark:border-brand-900/50 rounded-2xl p-5 space-y-3">
-              <h3 className="font-bold text-brand-700 dark:text-brand-300 text-sm flex items-center gap-2">
+            <div className="bg-brand-500/5 dark:bg-brand-500/10 border border-brand-500/20 rounded-2xl p-6 space-y-4">
+              <h3 className="font-bold text-brand-600 dark:text-brand-400 text-sm uppercase tracking-widest flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                How to get your data
+                Preparation Guide
               </h3>
-              <ol className="text-sm text-brand-600 dark:text-brand-400 space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-brand-200 dark:bg-brand-800 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                  Go to <code className="font-mono font-semibold bg-brand-100 dark:bg-brand-900 px-1 rounded">accounts.snapchat.com</code> and sign in
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-brand-200 dark:bg-brand-800 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                  Click "My Data" and submit a download request
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-brand-200 dark:bg-brand-800 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                  When ready, download the zip file
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-brand-200 dark:bg-brand-800 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xs font-bold shrink-0">4</span>
-                  Select the <strong>.zip file directly</strong> or unzip it and select the folder
-                </li>
-              </ol>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">1</span>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
+                    Sign in to <code className="font-mono text-brand-500 bg-brand-500/10 px-1 rounded">accounts.snapchat.com</code>
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">2</span>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
+                    Submit a <span className="text-white font-medium">"My Data"</span> download request.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">3</span>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
+                    Download the <span className="text-white font-medium">ZIP</span> file when notified.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">4</span>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
+                    Select that <strong>ZIP</strong> or its extracted folder below.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Progress State */}
           {progress && !isDone ? (
-            <div className="space-y-6 py-4">
-              <div className="flex justify-between items-end mb-2">
+            <div className="space-y-8 py-6">
+              <div className="flex justify-between items-end">
                 <div>
-                  <h3 className="text-xl font-bold text-surface-800 dark:text-white">{progress.current_step}</h3>
-                  <p className="text-surface-500 dark:text-surface-400 text-sm">{progress.message}</p>
+                  <h3 className="text-2xl font-bold text-surface-900 dark:text-white mb-1">{progress.current_step}</h3>
+                  <p className="text-surface-500 dark:text-surface-400">{progress.message}</p>
                 </div>
-                <span className="text-brand-500 font-mono font-bold text-lg">
+                <span className="text-brand-400 font-mono font-black text-3xl">
                   {Math.round(progress.progress * 100)}%
                 </span>
               </div>
-              <div className="h-3 w-full bg-surface-100 dark:bg-surface-800 rounded-full overflow-hidden">
+              <div className="h-4 w-full bg-surface-100 dark:bg-surface-800 rounded-full overflow-hidden p-1 shadow-inner">
                 <div
-                  className="h-full bg-gradient-to-r from-brand-500 to-accent-cyan transition-all duration-300 ease-out"
+                  className="h-full bg-gradient-to-r from-brand-500 via-accent-purple to-accent-cyan transition-all duration-500 ease-out rounded-full shadow-lg"
                   style={{ width: `${progress.progress * 100}%` }}
                 />
               </div>
-              <p className="text-center text-sm text-surface-400 italic">
-                This might take a while for large archives. We're indexing everything for instant access later.
-              </p>
+              <div className="bg-surface-800/50 p-4 rounded-xl border border-surface-700">
+                <p className="text-center text-sm text-surface-400 leading-relaxed">
+                  We're performing deep reconstruction of your history. For large archives, this process handles thousands of media links and chat events.
+                </p>
+              </div>
             </div>
           ) : isDone && importResult ? (
             /* Completion State */
-            <div className="space-y-6 py-4">
+            <div className="space-y-8 py-4">
               <div className="text-center">
                 <div className={cn(
-                  "w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center",
+                  "w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl",
                   importResult.errors.length > 0
-                    ? "bg-amber-100 dark:bg-amber-900/30"
-                    : "bg-green-100 dark:bg-green-900/30"
+                    ? "bg-amber-500/20 text-amber-500"
+                    : "bg-green-500/20 text-green-500"
                 )}>
                   {importResult.errors.length > 0 ? (
-                    <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   ) : (
-                    <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </div>
-                <h3 className="text-xl font-bold text-surface-900 dark:text-white">
-                  {importResult.errors.length > 0 ? "Import completed with errors" : "Import Complete!"}
+                <h3 className="text-3xl font-black text-surface-900 dark:text-white mb-2">
+                  {importResult.errors.length > 0 ? "Import Partial" : "System Primed"}
                 </h3>
+                <p className="text-surface-400">Your Snapchat archive has been successfully reconstructed locally.</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <Card variant="surface" padding="md" className="text-center">
-                  <p className="text-2xl font-bold text-surface-900 dark:text-white">{importResult.conversations_parsed}</p>
-                  <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Conversations</p>
+              <div className="grid grid-cols-3 gap-5">
+                <Card variant="surface" padding="lg" className="text-center border-surface-800 bg-surface-900/40">
+                  <p className="text-3xl font-black text-brand-400 mb-1">{importResult.conversations_parsed}</p>
+                  <p className="text-[10px] font-bold text-surface-500 uppercase tracking-widest leading-none">Chats</p>
                 </Card>
-                <Card variant="surface" padding="md" className="text-center">
-                  <p className="text-2xl font-bold text-surface-900 dark:text-white">{importResult.events_parsed.toLocaleString()}</p>
-                  <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Messages</p>
+                <Card variant="surface" padding="lg" className="text-center border-surface-800 bg-surface-900/40">
+                  <p className="text-3xl font-black text-brand-400 mb-1">{importResult.events_parsed.toLocaleString()}</p>
+                  <p className="text-[10px] font-bold text-surface-500 uppercase tracking-widest leading-none">Events</p>
                 </Card>
-                <Card variant="surface" padding="md" className="text-center">
-                  <p className="text-2xl font-bold text-surface-900 dark:text-white">{importResult.memories_parsed}</p>
-                  <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Memories</p>
+                <Card variant="surface" padding="lg" className="text-center border-surface-800 bg-surface-900/40">
+                  <p className="text-3xl font-black text-brand-400 mb-1">{importResult.memories_parsed}</p>
+                  <p className="text-[10px] font-bold text-surface-500 uppercase tracking-widest leading-none">Memories</p>
                 </Card>
               </div>
 
               {importResult.warnings.length > 0 && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                  <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm mb-2 flex items-center gap-2">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5">
+                  <p className="font-bold text-amber-500 text-xs uppercase tracking-widest mb-3 flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    {importResult.warnings.length} warning(s)
+                    Integrity Alerts ({importResult.warnings.length})
                   </p>
-                  <ul className="text-xs text-amber-600 dark:text-amber-400 space-y-1 max-h-24 overflow-y-auto custom-scrollbar">
-                    {importResult.warnings.slice(0, 10).map((w, i) => (
-                      <li key={i} className="truncate">{w}</li>
+                  <ul className="text-sm text-surface-400 space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                    {importResult.warnings.map((w, i) => (
+                      <li key={i} className="flex gap-2 items-start text-amber-200/60 font-medium">
+                        <span className="text-amber-500 shrink-0">•</span>
+                        {w}
+                      </li>
                     ))}
-                    {importResult.warnings.length > 10 && (
-                      <li className="italic">...and {importResult.warnings.length - 10} more</li>
-                    )}
                   </ul>
                 </div>
               )}
 
-              <Button onClick={onComplete} size="lg" className="w-full">
-                Continue to Dashboard
+              <Button onClick={onComplete} size="lg" className="w-full h-14 text-lg font-bold shadow-brand-500/20 shadow-xl">
+                Launch Dashboard
               </Button>
             </div>
           ) : (
             /* Selection State */
             <>
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-start gap-3">
-                  <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-sm font-medium">{error}</p>
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-5 rounded-2xl flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                    <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-red-300">Detection Issue</p>
+                    <p className="text-sm opacity-80">{error}</p>
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-surface-800 dark:text-white">Detected Exports</h2>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-bold text-surface-900 dark:text-white">Detected Exports</h2>
+                    {detected.length > 0 && <Badge variant="info">{detected.length}</Badge>}
+                  </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={handlePickZip}>
-                      Select Zip
+                    <Button variant="ghost" size="sm" onClick={handlePickZip} className="hover:bg-surface-800">
+                      Zip File
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handlePickFolder}>
-                      Select Folder
+                    <Button variant="ghost" size="sm" onClick={handlePickFolder} className="hover:bg-surface-800">
+                      Folder
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleScan} disabled={loading} className="border-surface-700">
+                      <svg className={cn("w-4 h-4 mr-2", loading && "animate-spin")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Rescan
                     </Button>
                   </div>
                 </div>
 
                 {loading ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-4 text-surface-400">
-                    <div className="w-10 h-10 border-4 border-surface-200 dark:border-surface-700 border-t-brand-500 rounded-full animate-spin" />
-                    <p className="font-medium">Scanning for data...</p>
+                  <div className="py-20 flex flex-col items-center justify-center gap-6 text-surface-500 bg-surface-900/30 rounded-3xl border border-surface-800 border-dashed">
+                    <div className="w-16 h-16 border-4 border-surface-800 border-t-brand-500 rounded-full animate-spin" />
+                    <p className="font-bold tracking-widest uppercase text-xs">Accessing File System...</p>
                   </div>
                 ) : detected.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="max-h-[380px] overflow-y-auto pr-2 custom-scrollbar space-y-3 p-1">
                     {detected.map((exp) => (
                       <Card
                         key={exp.source_path}
-                        variant="surface"
+                        variant="glass"
                         padding="md"
-                        className="group hover:border-brand-300 dark:hover:border-brand-600 transition-all flex items-center justify-between"
+                        className="group hover:border-brand-500/50 hover:bg-brand-500/5 transition-all duration-300 flex items-center justify-between border-surface-800 backdrop-blur-sm"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-surface-100 dark:bg-surface-700 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <div className="flex items-center gap-5 min-w-0">
+                          <div className="w-14 h-14 bg-surface-800 rounded-2xl flex items-center justify-center group-hover:bg-brand-500/20 group-hover:text-brand-400 transition-colors shrink-0">
                             {exp.source_type === "Zip" ? (
-                              <svg className="w-6 h-6 text-surface-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                               </svg>
                             ) : (
-                              <svg className="w-6 h-6 text-surface-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                               </svg>
                             )}
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-surface-900 dark:text-white truncate max-w-[200px]">
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-white group-hover:text-brand-400 transition-colors truncate">
                               {exp.id}
                             </h4>
-                            <p className="text-xs text-surface-400 font-mono mt-0.5 truncate max-w-[280px]">
+                            <p className="text-xs text-surface-500 font-mono mt-1 truncate" title={exp.source_path}>
                               {exp.source_path}
                             </p>
                             <div className="flex gap-2 mt-2">
                               <Badge variant={exp.validation_status === "Valid" ? "success" : "warning"} size="sm">
                                 {exp.validation_status}
                               </Badge>
-                              <Badge variant="default" size="sm">
-                                {exp.source_type}
+                              <Badge variant="default" size="sm" className="opacity-60 text-[10px]">
+                                {exp.source_type.toUpperCase()}
                               </Badge>
                             </div>
                           </div>
                         </div>
-                        <Button onClick={() => handleProcess(exp)}>
-                          Import
+                        <Button
+                          onClick={() => handleProcess(exp)}
+                          variant={exp.validation_status === "Valid" ? "solid" : "outline"}
+                          className="shrink-0 font-bold ml-4"
+                        >
+                          Process
                         </Button>
                       </Card>
                     ))}
                   </div>
                 ) : !error ? (
-                  <div className="py-12 text-center bg-surface-50 dark:bg-surface-800 rounded-2xl border-2 border-dashed border-surface-200 dark:border-surface-700">
-                    <div className="w-16 h-16 mx-auto rounded-2xl bg-surface-100 dark:bg-surface-700 flex items-center justify-center mb-4">
-                      <svg className="w-8 h-8 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="py-20 text-center bg-surface-900/30 rounded-3xl border-2 border-dashed border-surface-800 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-3xl bg-surface-800 flex items-center justify-center mb-6 shadow-xl">
+                      <svg className="w-10 h-10 text-surface-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
-                    <p className="text-surface-500 font-medium mb-4">No exports found automatically</p>
-                    <div className="flex gap-3 justify-center">
-                      <Button onClick={handlePickZip}>Select Zip File</Button>
-                      <Button variant="outline" onClick={handlePickFolder}>Select Folder</Button>
+                    <h3 className="text-xl font-bold text-white mb-2">Manual Selection Required</h3>
+                    <p className="text-surface-500 max-w-sm mb-8 leading-relaxed">
+                      We couldn't find any Snapchat data in standard locations. Please point us to your archive.
+                    </p>
+                    <div className="flex gap-4">
+                      <Button onClick={handlePickZip} className="px-8 font-bold">Zip Archive</Button>
+                      <Button variant="outline" onClick={handlePickFolder} className="px-8 border-surface-700">Folder</Button>
                     </div>
                   </div>
                 ) : null}
