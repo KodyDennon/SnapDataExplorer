@@ -6,12 +6,15 @@ import { Dashboard } from "./components/Dashboard";
 import { SetupFlow } from "./components/SetupFlow";
 import { SearchView } from "./components/SearchView";
 import { GalleryView } from "./components/GalleryView";
+import { MemoriesView } from "./components/MemoriesView";
 import { ToastContainer } from "./components/Toast";
 import { ExportSet, IngestionProgress, IngestionResult } from "./types";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./hooks/useTheme";
 import { useToast } from "./hooks/useToast";
+import { ViewMode } from "./components/ui/ModeToggle";
+import { cn } from "./lib/utils";
 
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
@@ -22,6 +25,7 @@ function App() {
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("pro");
   const { theme, setTheme } = useTheme();
   const { toasts, addToast, removeToast } = useToast();
 
@@ -103,6 +107,7 @@ function App() {
     }
   }
 
+  // Setup Flow (No data or explicit setup trigger)
   if (hasData === false || showSetup) {
     return (
       <>
@@ -119,28 +124,46 @@ function App() {
     );
   }
 
+  // Loading State
   if (hasData === null) {
     return (
-      <div className="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 border-4 border-slate-700 border-t-yellow-400 rounded-full animate-spin" />
-        <p className="text-slate-400 font-bold animate-pulse">Initializing Snap Explorer...</p>
+      <div className="h-screen w-screen bg-surface-950 flex flex-col items-center justify-center gap-4">
+        <div className="w-14 h-14 border-4 border-surface-700 border-t-brand-500 rounded-full animate-spin" />
+        <p className="text-surface-400 font-semibold animate-pulse">Initializing Snap Explorer...</p>
       </div>
     );
   }
 
+  // Main Application Layout
   return (
-    <div className="flex h-screen w-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans">
+    <div className={cn(
+      "flex h-screen w-screen overflow-hidden font-sans transition-colors duration-300",
+      viewMode === "chill"
+        ? "bg-gradient-to-br from-surface-900 via-surface-950 to-brand-950 text-white"
+        : "bg-surface-50 dark:bg-surface-950 text-surface-900 dark:text-surface-100"
+    )}>
       {/* Mobile sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+        className="fixed top-4 left-4 z-50 md:hidden bg-surface-900 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg border border-surface-700"
         aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
       >
-        {sidebarOpen ? "\u{2715}" : "\u{2630}"}
+        {sidebarOpen ? (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
       </button>
 
       {/* Sidebar with responsive visibility */}
-      <div className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 transition-transform duration-200 fixed md:relative z-40 h-full`}>
+      <div className={cn(
+        "transition-transform duration-300 ease-out fixed md:relative z-40 h-full",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
         <Sidebar
           onSelectExport={handleSelectExport}
           onNavigate={(page) => { setActivePage(page); if (window.innerWidth < 768) setSidebarOpen(false); }}
@@ -151,20 +174,23 @@ function App() {
           theme={theme}
           onThemeChange={setTheme}
           refreshTrigger={refreshTrigger}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
       </div>
 
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
+      {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
         {activePage === "dashboard" && (
-          <Dashboard currentExport={currentExport} progress={progress} />
+          <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} />
         )}
 
         {activePage === "chats" && (
@@ -177,9 +203,9 @@ function App() {
             {selectedConvo ? (
               <ChatView conversationId={selectedConvo} addToast={addToast} />
             ) : (
-              <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-300 flex-col gap-4">
-                <span className="text-6xl animate-bounce text-slate-200 dark:text-slate-600">{"\u{1F4AC}"}</span>
-                <p className="font-bold text-xl text-slate-400">Select a thread to dive in</p>
+              <div className="flex-1 flex items-center justify-center bg-surface-50 dark:bg-surface-900 flex-col gap-4">
+                <span className="text-6xl animate-bounce text-surface-200 dark:text-surface-700">💬</span>
+                <p className="font-bold text-xl text-surface-400">Select a conversation</p>
               </div>
             )}
           </>
@@ -190,6 +216,8 @@ function App() {
         )}
 
         {activePage === "gallery" && <GalleryView />}
+
+        {activePage === "memories" && <MemoriesView />}
       </main>
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />

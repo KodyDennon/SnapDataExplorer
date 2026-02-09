@@ -3,8 +3,8 @@
 //! Defines all shared types used across the Tauri IPC boundary,
 //! database layer, and ingestion pipeline.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// How an export was originally provided by the user.
@@ -88,6 +88,14 @@ pub struct Person {
     pub display_name: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum DownloadStatus {
+    Pending,
+    Downloading,
+    Downloaded,
+    Failed,
+}
+
 /// A saved Snapchat memory.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Memory {
@@ -99,6 +107,9 @@ pub struct Memory {
     pub longitude: Option<f64>,
     pub media_path: Option<PathBuf>,
     pub export_id: String,
+    pub download_url: Option<String>,
+    pub proxy_url: Option<String>,
+    pub download_status: DownloadStatus,
 }
 
 /// Aggregate statistics for an imported export.

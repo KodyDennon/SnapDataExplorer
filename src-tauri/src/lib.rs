@@ -3,30 +3,36 @@
 //! Provides IPC commands for detecting, importing, querying, and exporting
 //! Snapchat "My Data" exports. All data is stored locally in SQLite.
 
-pub mod models;
+pub mod db;
+pub mod downloader;
 pub mod error;
 pub mod ingestion;
-pub mod db;
+pub mod models;
+pub mod storage;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use crate::models::{
-    ExportSet, IngestionProgress, IngestionResult, Conversation, Event,
-    ExportStats, ExportSourceType, Memory, SearchResult, ValidationReport,
-    MediaEntry, MessagePage,
-};
-use crate::error::{AppResult, AppError};
-use crate::ingestion::detector::ExportDetector;
-use crate::ingestion::parser::{ChatParser, ChatJsonParser, PersonParser, MemoryParser, SnapHistoryParser};
-use crate::ingestion::media_linker::MediaLinker;
-use crate::ingestion::extractor::ZipExtractor;
 use crate::db::DatabaseManager;
+use crate::downloader::MemoryDownloader;
+use crate::error::{AppError, AppResult};
+use crate::ingestion::detector::ExportDetector;
+use crate::ingestion::extractor::ZipExtractor;
+use crate::ingestion::media_linker::MediaLinker;
+use crate::ingestion::parser::{ChatJsonParser, ChatParser, MemoryParser, PersonParser, SnapHistoryParser};
+use crate::models::{
+    Conversation, Event, ExportSet, ExportSourceType, ExportStats, IngestionProgress, IngestionResult, MediaEntry,
+    Memory, MessagePage, SearchResult, ValidationReport,
+};
+use crate::storage::{DiskSpaceInfo, StorageManager};
+use simplelog::{ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger};
+use std::collections::HashMap;
 use std::fs;
-use tauri::{Manager, Emitter};
-use simplelog::{CombinedLogger, WriteLogger, TermLogger, Config, LevelFilter, TerminalMode, ColorChoice};
+use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{Emitter, Manager};
 
 fn db_path(app_handle: &tauri::AppHandle) -> AppResult<PathBuf> {
-    let dir = app_handle.path().app_data_dir()
+    let dir = app_handle
+        .path()
+        .app_data_dir()
         .map_err(|e| AppError::Generic(format!("Failed to resolve app data directory: {}", e)))?;
     Ok(dir.join("index.db"))
 }
@@ -62,7 +68,9 @@ async fn process_export(export: ExportSet, app_handle: tauri::AppHandle) -> AppR
     log::info!("process_export: starting (type: {:?})", export.source_type);
     log::debug!("process_export: source path: {:?}", export.source_path);
 
-    let app_data = app_handle.path().app_data_dir()
+    let app_data = app_handle
+        .path()
+        .app_data_dir()
         .map_err(|e| AppError::Generic(format!("Failed to resolve app data directory: {}", e)))?;
     let working_dir = app_data.join("exports");
 
@@ -82,12 +90,18 @@ async fn process_export(export: ExportSet, app_handle: tauri::AppHandle) -> AppR
         };
 
         tauri::async_runtime::block_on(reconstruct_from_path(original_export, working_path, handle))
-    }).await.map_err(|e| AppError::Generic(format!("Thread join error: {}", e)))??;
+    })
+    .await
+    .map_err(|e| AppError::Generic(format!("Thread join error: {}", e)))??;
 
     Ok(())
 }
 
-async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf, app_handle: tauri::AppHandle) -> AppResult<()> {
+async fn reconstruct_from_path(
+    original_export: ExportSet,
+    source_path: PathBuf,
+    app_handle: tauri::AppHandle,
+) -> AppResult<()> {
     let export_id = original_export.id.clone();
     let db = db_path(&app_handle)?;
 
@@ -97,31 +111,42 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
         }
     }
 
-    let mut database = DatabaseManager::new(&db)?;
+    let database = DatabaseManager::new(&db)?;
     let mut warnings: Vec<String> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
 
-    log::info!("reconstruct_from_path: starting for export_id={}, type={:?}",
-        export_id, original_export.source_type);
+    log::info!(
+        "reconstruct_from_path: starting for export_id={}, type={:?}",
+        export_id,
+        original_export.source_type
+    );
     log::debug!("reconstruct_from_path: source path: {:?}", source_path);
 
-    let _ = app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Initializing".to_string(),
-        progress: 0.05,
-        message: "Setting up database...".to_string(),
-    });
+    let _ = app_handle.emit(
+        "ingestion-progress",
+        IngestionProgress {
+            export_id: export_id.clone(),
+            current_step: "Initializing".to_string(),
+            progress: 0.05,
+            message: "Setting up database...".to_string(),
+        },
+    );
 
     // Store original export info (preserves source_path and source_type for reimport)
     database.insert_export(&original_export)?;
 
     // --- Phase: Friends Resolution ---
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Resolving Identities".to_string(),
-        progress: 0.08,
-        message: "Resolving friends and contacts...".to_string(),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Resolving Identities".to_string(),
+                progress: 0.08,
+                message: "Resolving friends and contacts...".to_string(),
+            },
+        )
+        .ok();
 
     let friends_json = source_path.join("json").join("friends.json");
     if friends_json.exists() {
@@ -152,8 +177,11 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
 
         for (idx, entry) in entries.into_iter().enumerate() {
             let path = entry.path();
-            if path.is_file() && path.extension().is_some_and(|ext| ext == "html")
-                && path.file_name().is_some_and(|n| n.to_string_lossy().starts_with("subpage_"))
+            if path.is_file()
+                && path.extension().is_some_and(|ext| ext == "html")
+                && path
+                    .file_name()
+                    .is_some_and(|n| n.to_string_lossy().starts_with("subpage_"))
             {
                 match ChatParser::parse_subpage(&path) {
                     Ok((conv, events)) => {
@@ -163,19 +191,30 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
                     Err(e) => {
                         parse_failures += 1;
                         log::error!("Failed to parse {:?}: {}", path.file_name(), e);
-                        warnings.push(format!("Failed to parse {}: {}", path.file_name().unwrap_or_default().to_string_lossy(), e));
+                        warnings.push(format!(
+                            "Failed to parse {}: {}",
+                            path.file_name().unwrap_or_default().to_string_lossy(),
+                            e
+                        ));
                     }
                 }
             }
 
             if idx % 10 == 0 {
-                let file_progress = if total_files > 0 { idx as f32 / total_files as f32 } else { 0.0 };
-                let _ = app_handle.emit("ingestion-progress", IngestionProgress {
-                    export_id: export_id.clone(),
-                    current_step: "Parsing Chat HTML".to_string(),
-                    progress: 0.10 + (0.30 * file_progress),
-                    message: format!("Parsing conversation {} of {}...", idx + 1, total_files),
-                });
+                let file_progress = if total_files > 0 {
+                    idx as f32 / total_files as f32
+                } else {
+                    0.0
+                };
+                let _ = app_handle.emit(
+                    "ingestion-progress",
+                    IngestionProgress {
+                        export_id: export_id.clone(),
+                        current_step: "Parsing Chat HTML".to_string(),
+                        progress: 0.10 + (0.30 * file_progress),
+                        message: format!("Parsing conversation {} of {}...", idx + 1, total_files),
+                    },
+                );
             }
         }
     } else {
@@ -189,19 +228,28 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
     }
 
     // --- Phase: JSON Chat History (Media IDs source) ---
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Parsing Chat JSON".to_string(),
-        progress: 0.38,
-        message: "Extracting media ID mappings from chat history JSON...".to_string(),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Parsing Chat JSON".to_string(),
+                progress: 0.38,
+                message: "Extracting media ID mappings from chat history JSON...".to_string(),
+            },
+        )
+        .ok();
 
     let chat_json = source_path.join("json").join("chat_history.json");
     if chat_json.exists() {
         match ChatJsonParser::parse_chat_history_json(&chat_json) {
             Ok(json_conversations) => {
                 let json_event_count: usize = json_conversations.iter().map(|(_, e)| e.len()).sum();
-                log::info!("ChatJsonParser: {} conversations, {} events from JSON", json_conversations.len(), json_event_count);
+                log::info!(
+                    "ChatJsonParser: {} conversations, {} events from JSON",
+                    json_conversations.len(),
+                    json_event_count
+                );
 
                 let mut merged_ids = 0;
                 let mut new_events_added = 0;
@@ -227,7 +275,8 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
                             if !convo_exists {
                                 // Extract conversation title from metadata if available
                                 let display_name = json_event.metadata.as_ref().and_then(|m| {
-                                    serde_json::from_str::<serde_json::Value>(m).ok()
+                                    serde_json::from_str::<serde_json::Value>(m)
+                                        .ok()
                                         .and_then(|v| v.get("conversation_title")?.as_str().map(|s| s.to_string()))
                                 });
                                 all_conversations.push(Conversation {
@@ -245,7 +294,11 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
                     }
                 }
 
-                log::info!("JSON merge: {} events enriched with media IDs, {} new events added", merged_ids, new_events_added);
+                log::info!(
+                    "JSON merge: {} events enriched with media IDs, {} new events added",
+                    merged_ids,
+                    new_events_added
+                );
             }
             Err(e) => {
                 log::error!("Failed to parse chat_history.json: {}", e);
@@ -257,19 +310,28 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
     }
 
     // --- Phase: Snap History (JSON) ---
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Parsing Snap History".to_string(),
-        progress: 0.42,
-        message: "Processing snap history metadata...".to_string(),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Parsing Snap History".to_string(),
+                progress: 0.42,
+                message: "Processing snap history metadata...".to_string(),
+            },
+        )
+        .ok();
 
     let snap_json = source_path.join("json").join("snap_history.json");
     if snap_json.exists() {
         match SnapHistoryParser::parse_snap_history_json(&snap_json) {
             Ok(snap_conversations) => {
                 let snap_event_count: usize = snap_conversations.iter().map(|(_, e)| e.len()).sum();
-                log::info!("Parsed {} snap history conversations with {} events", snap_conversations.len(), snap_event_count);
+                log::info!(
+                    "Parsed {} snap history conversations with {} events",
+                    snap_conversations.len(),
+                    snap_event_count
+                );
                 for (convo_key, events) in snap_conversations {
                     let existing = all_conversations.iter().any(|c| c.id == convo_key);
                     if !existing {
@@ -295,12 +357,17 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
     }
 
     // --- Phase: Media Linking ---
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Linking Media".to_string(),
-        progress: 0.50,
-        message: "Resolving media file references...".to_string(),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Linking Media".to_string(),
+                progress: 0.50,
+                message: "Resolving media file references...".to_string(),
+            },
+        )
+        .ok();
 
     let chat_media_dir = source_path.join("chat_media");
     let media_dir = source_path.join("media");
@@ -337,12 +404,17 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
     }
 
     // --- Phase: Memories Parsing ---
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Processing Memories".to_string(),
-        progress: 0.65,
-        message: "Parsing memories history...".to_string(),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Processing Memories".to_string(),
+                progress: 0.65,
+                message: "Parsing memories history...".to_string(),
+            },
+        )
+        .ok();
 
     let memories_json = source_path.join("json").join("memories_history.json");
     let mut all_memories = Vec::new();
@@ -362,13 +434,22 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
     }
 
     // --- Phase: Save to Database ---
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Saving to Database".to_string(),
-        progress: 0.75,
-        message: format!("Indexing {} conversations, {} messages, {} memories...",
-            all_conversations.len(), all_events.len(), all_memories.len()),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Saving to Database".to_string(),
+                progress: 0.75,
+                message: format!(
+                    "Indexing {} conversations, {} messages, {} memories...",
+                    all_conversations.len(),
+                    all_events.len(),
+                    all_memories.len()
+                ),
+            },
+        )
+        .ok();
 
     database.batch_insert_conversations(&all_conversations)?;
     database.batch_insert_events(&all_events, &export_id)?;
@@ -377,8 +458,14 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
         database.batch_insert_memories(&all_memories)?;
     }
 
-    log::info!("Ingestion complete: {} conversations, {} events, {} memories, {} warnings, {} errors",
-        all_conversations.len(), all_events.len(), all_memories.len(), warnings.len(), errors.len());
+    log::info!(
+        "Ingestion complete: {} conversations, {} events, {} memories, {} warnings, {} errors",
+        all_conversations.len(),
+        all_events.len(),
+        all_memories.len(),
+        warnings.len(),
+        errors.len()
+    );
 
     // Emit the detailed result
     let result = IngestionResult {
@@ -392,15 +479,22 @@ async fn reconstruct_from_path(original_export: ExportSet, source_path: PathBuf,
     };
     let _ = app_handle.emit("ingestion-result", &result);
 
-    app_handle.emit("ingestion-progress", IngestionProgress {
-        export_id: export_id.clone(),
-        current_step: "Complete".to_string(),
-        progress: 1.0,
-        message: format!(
-            "Indexed {} conversations, {} messages, {} memories.",
-            all_conversations.len(), all_events.len(), all_memories.len()
-        ),
-    }).ok();
+    app_handle
+        .emit(
+            "ingestion-progress",
+            IngestionProgress {
+                export_id: export_id.clone(),
+                current_step: "Complete".to_string(),
+                progress: 1.0,
+                message: format!(
+                    "Indexed {} conversations, {} messages, {} memories.",
+                    all_conversations.len(),
+                    all_events.len(),
+                    all_memories.len()
+                ),
+            },
+        )
+        .ok();
 
     Ok(())
 }
@@ -422,10 +516,19 @@ async fn get_messages(conversation_id: String, app_handle: tauri::AppHandle) -> 
 }
 
 #[tauri::command]
-async fn get_messages_page(conversation_id: String, offset: i32, limit: i32, app_handle: tauri::AppHandle) -> AppResult<MessagePage> {
+async fn get_messages_page(
+    conversation_id: String,
+    offset: i32,
+    limit: i32,
+    app_handle: tauri::AppHandle,
+) -> AppResult<MessagePage> {
     match db_for_app(&app_handle)? {
         Some(db) => db.get_messages_page(&conversation_id, offset, limit),
-        None => Ok(MessagePage { messages: Vec::new(), total_count: 0, has_more: false }),
+        None => Ok(MessagePage {
+            messages: Vec::new(),
+            total_count: 0,
+            has_more: false,
+        }),
     }
 }
 
@@ -446,9 +549,15 @@ async fn get_exports(app_handle: tauri::AppHandle) -> AppResult<Vec<ExportSet>> 
 }
 
 #[tauri::command]
-async fn search_messages(query: String, limit: Option<i32>, app_handle: tauri::AppHandle) -> AppResult<Vec<SearchResult>> {
+async fn search_messages(
+    query: String,
+    limit: Option<i32>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<Vec<SearchResult>> {
     if query.len() > 500 {
-        return Err(AppError::Validation("Search query too long (max 500 characters)".into()));
+        return Err(AppError::Validation(
+            "Search query too long (max 500 characters)".into(),
+        ));
     }
     match db_for_app(&app_handle)? {
         Some(db) => db.search_messages(&query, limit.unwrap_or(50)),
@@ -465,7 +574,11 @@ async fn get_memories(export_id: Option<String>, app_handle: tauri::AppHandle) -
 }
 
 #[tauri::command]
-async fn get_all_media(limit: Option<i32>, offset: Option<i32>, app_handle: tauri::AppHandle) -> AppResult<Vec<MediaEntry>> {
+async fn get_all_media(
+    limit: Option<i32>,
+    offset: Option<i32>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<Vec<MediaEntry>> {
     match db_for_app(&app_handle)? {
         Some(db) => db.get_all_media(limit.unwrap_or(100), offset.unwrap_or(0)),
         None => Ok(Vec::new()),
@@ -473,7 +586,11 @@ async fn get_all_media(limit: Option<i32>, offset: Option<i32>, app_handle: taur
 }
 
 #[tauri::command]
-async fn get_message_index_at_date(conversation_id: String, date: String, app_handle: tauri::AppHandle) -> AppResult<i32> {
+async fn get_message_index_at_date(
+    conversation_id: String,
+    date: String,
+    app_handle: tauri::AppHandle,
+) -> AppResult<i32> {
     match db_for_app(&app_handle)? {
         Some(db) => db.get_message_index_at_date(&conversation_id, &date),
         None => Ok(0),
@@ -489,17 +606,24 @@ async fn get_activity_dates(conversation_id: String, app_handle: tauri::AppHandl
 }
 
 #[tauri::command]
-async fn export_conversation(conversation_id: String, format: String, output_path: String, app_handle: tauri::AppHandle) -> AppResult<()> {
+async fn export_conversation(
+    conversation_id: String,
+    format: String,
+    output_path: String,
+    app_handle: tauri::AppHandle,
+) -> AppResult<()> {
     // Validate output path — must be under user-accessible directories
     let output = PathBuf::from(&output_path);
     if let Some(parent) = output.parent() {
         if !parent.exists() {
-            return Err(AppError::Validation(format!("Output directory does not exist: {}", parent.display())));
+            return Err(AppError::Validation(format!(
+                "Output directory does not exist: {}",
+                parent.display()
+            )));
         }
     }
     // Reject paths that try to traverse outside via ..
-    let canonical_parent = output.parent()
-        .and_then(|p| std::fs::canonicalize(p).ok());
+    let canonical_parent = output.parent().and_then(|p| std::fs::canonicalize(p).ok());
     if canonical_parent.is_none() {
         return Err(AppError::Validation("Invalid output path".to_string()));
     }
@@ -508,9 +632,7 @@ async fn export_conversation(conversation_id: String, format: String, output_pat
     let messages = db.get_messages(&conversation_id)?;
 
     let content = match format.as_str() {
-        "json" => {
-            serde_json::to_string_pretty(&messages).unwrap_or_else(|_| "[]".to_string())
-        }
+        "json" => serde_json::to_string_pretty(&messages).unwrap_or_else(|_| "[]".to_string()),
         _ => {
             let mut output = String::new();
             output.push_str(&format!("Conversation: {}\n", conversation_id));
@@ -519,7 +641,12 @@ async fn export_conversation(conversation_id: String, format: String, output_pat
             for msg in &messages {
                 let sender = msg.sender_name.as_deref().unwrap_or(&msg.sender);
                 let time = msg.timestamp.format("%Y-%m-%d %H:%M:%S");
-                output.push_str(&format!("[{}] {}: {}\n", time, sender, msg.content.as_deref().unwrap_or("")));
+                output.push_str(&format!(
+                    "[{}] {}: {}\n",
+                    time,
+                    sender,
+                    msg.content.as_deref().unwrap_or("")
+                ));
             }
             output
         }
@@ -549,8 +676,12 @@ async fn reset_data(app_handle: tauri::AppHandle) -> AppResult<()> {
     // Also remove WAL and SHM files if they exist
     let wal = path.with_extension("db-wal");
     let shm = path.with_extension("db-shm");
-    if wal.exists() { let _ = fs::remove_file(&wal); }
-    if shm.exists() { let _ = fs::remove_file(&shm); }
+    if wal.exists() {
+        let _ = fs::remove_file(&wal);
+    }
+    if shm.exists() {
+        let _ = fs::remove_file(&shm);
+    }
     Ok(())
 }
 
@@ -588,8 +719,12 @@ async fn reimport_data(app_handle: tauri::AppHandle) -> AppResult<()> {
     }
     let wal = path.with_extension("db-wal");
     let shm = path.with_extension("db-shm");
-    if wal.exists() { let _ = fs::remove_file(&wal); }
-    if shm.exists() { let _ = fs::remove_file(&shm); }
+    if wal.exists() {
+        let _ = fs::remove_file(&wal);
+    }
+    if shm.exists() {
+        let _ = fs::remove_file(&shm);
+    }
 
     // 3. Re-process the same export
     process_export(export, app_handle).await
@@ -605,6 +740,94 @@ async fn get_log_path(app_handle: tauri::AppHandle) -> AppResult<String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+async fn set_storage_path(path: String, app_handle: tauri::AppHandle) -> AppResult<()> {
+    let path_buf = PathBuf::from(&path);
+    StorageManager::validate_path(path_buf.clone()).map_err(|e| AppError::Generic(e.to_string()))?;
+
+    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+    db.set_setting("storage_path", &path)?;
+    log::info!("Storage path set to: {}", path);
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_storage_path(app_handle: tauri::AppHandle) -> AppResult<Option<String>> {
+    let db = db_for_app(&app_handle)?;
+    if let Some(db) = db {
+        db.get_setting("storage_path").map_err(|e| e.into())
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+async fn check_disk_space(path: Option<String>, app_handle: tauri::AppHandle) -> AppResult<DiskSpaceInfo> {
+    let path_to_check = if let Some(p) = path {
+        PathBuf::from(p)
+    } else {
+        let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+        let stored_path = db.get_setting("storage_path")?;
+        match stored_path {
+            Some(p) => PathBuf::from(p),
+            None => return Err(AppError::Generic("No storage path set".into())),
+        }
+    };
+
+    StorageManager::get_disk_space(path_to_check).map_err(|e| AppError::Generic(e.to_string()))
+}
+
+#[tauri::command]
+async fn download_all_memories(app_handle: tauri::AppHandle) -> AppResult<()> {
+    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+    let downloader = MemoryDownloader::new(app_handle, Arc::new(db));
+    downloader.download_all_pending().await
+}
+
+#[tauri::command]
+async fn download_memory(memory: Memory, app_handle: tauri::AppHandle) -> AppResult<()> {
+    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+    let storage_path = db.get_setting("storage_path")?;
+    let storage_root = match storage_path {
+        Some(p) => PathBuf::from(p),
+        None => return Err(AppError::Generic("No storage path set".into())),
+    };
+
+    let downloader = MemoryDownloader::new(app_handle, Arc::new(db));
+    downloader.download_memory(memory, storage_root).await
+}
+
+#[tauri::command]
+async fn show_in_folder(path: String) -> AppResult<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("-R")
+            .arg(path)
+            .spawn()
+            .map_err(|e| AppError::Generic(e.to_string()))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg("/select,")
+            .arg(path)
+            .spawn()
+            .map_err(|e| AppError::Generic(e.to_string()))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let path_buf = std::path::PathBuf::from(path);
+        if let Some(parent) = path_buf.parent() {
+            std::process::Command::new("xdg-open")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| AppError::Generic(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize logging: prefer app data dir, fall back to CWD
@@ -613,20 +836,27 @@ pub fn run() {
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let _ = fs::create_dir_all(&log_dir);
     let log_path = log_dir.join("snap_explorer.log");
-    let log_file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log_path);
+    let log_file = std::fs::OpenOptions::new().create(true).append(true).open(&log_path);
 
     match log_file {
         Ok(file) => {
             let _ = CombinedLogger::init(vec![
-                TermLogger::new(LevelFilter::Info, Config::default(), TerminalMode::Stderr, ColorChoice::Auto),
+                TermLogger::new(
+                    LevelFilter::Info,
+                    Config::default(),
+                    TerminalMode::Stderr,
+                    ColorChoice::Auto,
+                ),
                 WriteLogger::new(LevelFilter::Info, Config::default(), file),
             ]);
         }
         Err(_) => {
-            let _ = TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Stderr, ColorChoice::Auto);
+            let _ = TermLogger::init(
+                LevelFilter::Info,
+                Config::default(),
+                TerminalMode::Stderr,
+                ColorChoice::Auto,
+            );
         }
     }
 
@@ -653,7 +883,13 @@ pub fn run() {
             export_conversation,
             reset_data,
             reimport_data,
-            get_log_path
+            get_log_path,
+            set_storage_path,
+            get_storage_path,
+            check_disk_space,
+            download_memory,
+            download_all_memories,
+            show_in_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

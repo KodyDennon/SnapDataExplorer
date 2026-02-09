@@ -1,18 +1,20 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import { Event as Message, MessagePage, Conversation } from "../types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Toast } from "../hooks/useToast";
+import { MediaViewer } from "./ui/MediaViewer";
+import { Image as ImageIcon, Play, FileText, Smartphone, PhoneMissed, Hash, RefreshCw } from "lucide-react";
+import { cn } from "../lib/utils";
+import { AnimatePresence } from "framer-motion";
 
 function MediaFallback({ type }: { type: "image" | "video" | "snap" | "snap-video" }) {
-  const icons: Record<string, string> = { image: "\u{1F5BC}\uFE0F", video: "\u{25B6}\uFE0F", snap: "\u{1F4F8}", "snap-video": "\u{25B6}\uFE0F" };
-  const labels: Record<string, string> = { image: "Image failed to load", video: "Video failed to load", snap: "Snap image failed to load", "snap-video": "Snap video failed to load" };
   return (
-    <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 flex items-center gap-2 border border-slate-200 dark:border-slate-700">
-      <span className="text-xl">{icons[type]}</span>
-      <span className="text-xs text-slate-400">{labels[type]}</span>
+    <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
+      <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{type} failed to load</span>
     </div>
   );
 }
@@ -35,8 +37,27 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const [exporting, setExporting] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [failedMedia, setFailedMedia] = useState<Set<string>>(new Set());
+  const [viewerIndex, setViewerIndex] = useState(-1);
+
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const offsetRef = useRef(0);
+
+  // Derive all media items for the viewer
+  const chatMediaItems = useMemo(() => {
+    const items: any[] = [];
+    messages.forEach(msg => {
+      if (["MEDIA", "NOTE", "SNAP", "SNAP_VIDEO"].includes(msg.event_type)) {
+        msg.media_references.forEach(ref => {
+          items.push({
+            ...msg,
+            path: ref,
+            media_type: msg.event_type.includes("VIDEO") ? "Video" : "Image"
+          });
+        });
+      }
+    });
+    return items;
+  }, [messages]);
 
   const loadMessages = useCallback(async (append = false) => {
     if (!append) {
@@ -66,7 +87,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
       setLoadingMore(false);
       setInitialLoad(false);
     }
-  }, [conversationId]);
+  }, [conversationId, addToast]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && offsetRef.current < totalCount) {
@@ -74,7 +95,6 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
     }
   }, [loadingMore, totalCount, loadMessages]);
 
-  // Load display name for this conversation
   useEffect(() => {
     setDisplayName(null);
     invoke<Conversation[]>("get_conversations").then((convos) => {
@@ -82,7 +102,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
       if (match?.display_name) {
         setDisplayName(match.display_name);
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, [conversationId]);
 
   useEffect(() => {
@@ -173,88 +193,103 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
       new Date(messages[index - 1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString()
     );
 
+    const openAtRef = (ref: string) => {
+      const itemIdx = chatMediaItems.findIndex(item => item.path === ref && item.id === msg.id);
+      if (itemIdx >= 0) setViewerIndex(itemIdx);
+    };
+
     return (
       <div className="px-8">
         {showDateSep && (
-          <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          <div className="flex items-center gap-4 my-8">
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
               {new Date(msg.timestamp).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </span>
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
           </div>
         )}
 
-        <div className={isSameSender && !showDateSep ? "mt-1" : "mt-4"}>
+        <div className={cn("flex flex-col", isSameSender && !showDateSep ? "mt-1" : "mt-6")}>
           {(!isSameSender || showDateSep) && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+            <div className="flex items-center gap-3 mb-2 px-1">
+              <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
                 {msg.sender_name || msg.sender}
               </span>
-              <span className="text-[9px] font-bold text-slate-300 dark:text-slate-500 uppercase">
+              <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
           )}
 
           <div
-            className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm max-w-2xl transition-all hover:shadow-md group/msg ${!isSameSender || showDateSep ? "rounded-tl-none" : ""}`}
+            className={cn(
+              "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm max-w-2xl transition-all hover:shadow-md group/msg relative",
+              !isSameSender || showDateSep ? "rounded-2xl rounded-tl-none" : "rounded-2xl"
+            )}
           >
             {msg.event_type === "TEXT" && (
-              <div className="relative">
-                <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-8">{msg.content}</p>
-                {msg.content && (
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(msg.content || "");
-                      addToast("info", "Copied to clipboard");
-                    }}
-                    className="absolute top-0 right-0 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
-                    aria-label="Copy message"
-                    title="Copy"
-                  >
-                    {"\u{1F4CB}"}
-                  </button>
-                )}
+              <div className="relative group">
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10">{msg.content}</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(msg.content || "");
+                    addToast("info", "Copied to clipboard");
+                  }}
+                  className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
               </div>
             )}
 
             {(msg.event_type === "MEDIA" || msg.event_type === "NOTE") && (
               <div className="space-y-3">
                 {msg.media_references.length > 0 ? (
-                  msg.media_references.map((ref_, i) => {
-                    const mediaKey = `${msg.id}-${i}`;
-                    if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
-                    return (
-                      <div key={i} className="rounded-xl overflow-hidden">
-                        {isImageFile(ref_) ? (
-                          <img
-                            src={getMediaSrc(ref_)}
-                            alt="Media"
-                            className="max-w-full max-h-80 rounded-xl object-contain bg-slate-100 dark:bg-slate-800"
-                            loading="lazy"
-                            onError={() => markFailed(mediaKey)}
-                          />
-                        ) : (
-                          <video
-                            src={getMediaSrc(ref_)}
-                            controls
-                            className="max-w-full max-h-80 rounded-xl bg-black"
-                            preload="metadata"
-                            onError={() => markFailed(mediaKey)}
-                          />
-                        )}
-                      </div>
-                    );
-                  })
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {msg.media_references.map((ref_, i) => {
+                      const mediaKey = `${msg.id}-${i}`;
+                      if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => openAtRef(ref_)}
+                          className="relative rounded-2xl overflow-hidden cursor-pointer group/media bg-slate-100 dark:bg-slate-800 aspect-square sm:aspect-auto"
+                        >
+                          {isImageFile(ref_) ? (
+                            <img
+                              src={getMediaSrc(ref_)}
+                              alt="Media"
+                              className="max-w-full max-h-80 rounded-xl object-contain group-hover/media:scale-105 transition-transform duration-500"
+                              loading="lazy"
+                              onError={() => markFailed(mediaKey)}
+                            />
+                          ) : (
+                            <div className="relative">
+                              <video
+                                src={getMediaSrc(ref_)}
+                                className="max-w-full max-h-80 rounded-xl bg-black"
+                                preload="metadata"
+                                onError={() => markFailed(mediaKey)}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/media:bg-black/40 transition-colors">
+                                <Play className="w-10 h-10 text-white fill-current" />
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity" />
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
-                  <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-6 flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700">
-                    <span className="text-3xl mb-1">{"\u{1F39E}\uFE0F"}</span>
-                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">Media not linked</span>
+                  <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center border border-slate-200 dark:border-slate-800">
+                    <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Media not linked</span>
                   </div>
                 )}
                 {msg.content && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400 italic border-l-2 border-slate-200 dark:border-slate-700 pl-3">{msg.content}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium border-l-2 border-purple-500 pl-3 py-1">{msg.content}</p>
                 )}
               </div>
             )}
@@ -262,63 +297,76 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
             {(msg.event_type === "SNAP" || msg.event_type === "SNAP_VIDEO") && (
               msg.media_references.length > 0 ? (
                 <div className="space-y-3">
-                  {msg.media_references.map((ref_, i) => {
-                    const mediaKey = `${msg.id}-snap-${i}`;
-                    if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
-                    return (
-                      <div key={i} className="rounded-xl overflow-hidden">
-                        {isImageFile(ref_) ? (
-                          <img
-                            src={getMediaSrc(ref_)}
-                            alt="Snap"
-                            className="max-w-full max-h-80 rounded-xl object-contain bg-slate-100 dark:bg-slate-800"
-                            loading="lazy"
-                            onError={() => markFailed(mediaKey)}
-                          />
-                        ) : (
-                          <video
-                            src={getMediaSrc(ref_)}
-                            controls
-                            preload="metadata"
-                            className="max-w-full max-h-80 rounded-xl bg-black"
-                            onError={() => markFailed(mediaKey)}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">{msg.event_type === "SNAP_VIDEO" ? "Snap Video" : "Snap"}</span>
+                  <div className="grid grid-cols-1 gap-2">
+                    {msg.media_references.map((ref_, i) => {
+                      const mediaKey = `${msg.id}-snap-${i}`;
+                      if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => openAtRef(ref_)}
+                          className="relative rounded-2xl overflow-hidden cursor-pointer group/snap bg-slate-100 dark:bg-slate-800"
+                        >
+                          {isImageFile(ref_) ? (
+                            <img
+                              src={getMediaSrc(ref_)}
+                              alt="Snap"
+                              className="max-w-full max-h-96 rounded-2xl object-contain group-hover/snap:scale-105 transition-transform duration-500"
+                              loading="lazy"
+                              onError={() => markFailed(mediaKey)}
+                            />
+                          ) : (
+                            <div className="relative">
+                              <video
+                                src={getMediaSrc(ref_)}
+                                preload="metadata"
+                                className="max-w-full max-h-96 rounded-2xl bg-black"
+                                onError={() => markFailed(mediaKey)}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/snap:bg-black/40 transition-colors">
+                                <Smartphone className="w-10 h-10 text-white" />
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-yellow-400 text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-xl">
+                            <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                            {msg.event_type === "SNAP_VIDEO" ? "Video Snap" : "Snap"}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 py-1">
-                  <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center text-yellow-600 dark:text-yellow-300">{"\u{1F4F8}"}</div>
+                <div className="flex items-center gap-4 py-2">
+                  <div className="w-12 h-12 bg-yellow-400/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-400/20">
+                    <Smartphone className="w-6 h-6" />
+                  </div>
                   <div>
-                    <p className="text-sm font-black text-slate-800 dark:text-slate-200 italic">{msg.content || "Snap"}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500">Content expired in original app</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{msg.content || "Snap"}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Content expired</p>
                   </div>
                 </div>
               )
             )}
 
             {msg.event_type === "MISSED_VIDEO_CHAT" && (
-              <div className="flex items-center gap-3 text-red-400 py-1">
-                <span className="text-xl">{"\u{1F4F9}"}</span>
-                <span className="text-xs font-bold uppercase tracking-tight">Missed Video Chat</span>
+              <div className="flex items-center gap-3 text-red-500 py-1 px-1">
+                <PhoneMissed className="w-5 h-5" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Missed Video Chat</span>
               </div>
             )}
 
             {msg.event_type === "MISSED_AUDIO_CHAT" && (
-              <div className="flex items-center gap-3 text-red-400 py-1">
-                <span className="text-xl">{"\u{1F4DE}"}</span>
-                <span className="text-xs font-bold uppercase tracking-tight">Missed Audio Chat</span>
+              <div className="flex items-center gap-3 text-red-500 py-1 px-1">
+                <PhoneMissed className="w-5 h-5" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Missed Audio Chat</span>
               </div>
             )}
 
             {msg.event_type === "STICKER" && (
               msg.media_references.length > 0 ? (
-                <div className="space-y-2">
+                <div className="p-2">
                   {msg.media_references.map((ref_, i) => {
                     const mediaKey = `${msg.id}-sticker-${i}`;
                     if (failedMedia.has(mediaKey)) return null;
@@ -327,7 +375,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
                         key={i}
                         src={getMediaSrc(ref_)}
                         alt="Sticker"
-                        className="max-w-[160px] max-h-[160px] object-contain"
+                        className="max-w-[140px] max-h-[140px] drop-shadow-xl hover:scale-110 transition-transform duration-300"
                         loading="lazy"
                         onError={() => markFailed(mediaKey)}
                       />
@@ -335,26 +383,24 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
                   })}
                 </div>
               ) : (
-                <div className="flex items-center gap-3 py-1">
-                  <span className="text-2xl">{"\u{1F3AD}"}</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Sticker</span>
+                <div className="flex items-center gap-3 py-1 text-slate-400 font-bold">
+                  <ImageIcon className="w-5 h-5 opacity-50" />
+                  <span className="text-xs uppercase tracking-widest">Sticker</span>
                 </div>
               )
             )}
 
             {msg.event_type === "SHARE" && (
-              <div className="flex items-center gap-3 py-1">
-                <span className="text-xl">{"\u{1F517}"}</span>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{msg.content || "Shared content"}</p>
+              <div className="flex items-center gap-4 py-1">
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
+                  <Play className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{msg.content || "Shared content"}</p>
               </div>
             )}
 
             {["STATUSPARTICIPANTREMOVED", "STATUSPARTICIPANTADDED", "STATUSCONVERSATIONNAMECHANGED"].includes(msg.event_type) && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center">{msg.content || msg.event_type}</p>
-            )}
-
-            {msg.event_type === "UNKNOWN" && msg.content && (
-              <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{msg.content}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center py-2">{msg.content || msg.event_type}</p>
             )}
           </div>
         </div>
@@ -363,67 +409,71 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F7F8FA] dark:bg-slate-950 h-full relative">
-      <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-8 shadow-sm z-10">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-slate-900 dark:bg-slate-700 rounded-full flex items-center justify-center text-white font-bold">
+    <div className="flex-1 flex flex-col bg-[#F7F8FA] dark:bg-slate-950 h-full relative overflow-hidden">
+      <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-10 shadow-sm z-10">
+        <div className="flex items-center gap-5">
+          <div className="w-11 h-11 bg-gradient-to-br from-slate-800 to-slate-950 dark:from-slate-700 dark:to-slate-900 rounded-2xl flex items-center justify-center text-white font-black shadow-lg">
             {headerName.slice(0, 1).toUpperCase()}
           </div>
           <div>
-            <h2 className="font-black text-slate-900 dark:text-slate-100 leading-none">{headerName}</h2>
-            {displayName && displayName !== conversationId && (
-              <p className="text-[9px] text-slate-300 dark:text-slate-600 font-mono mt-0.5">{conversationId}</p>
-            )}
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-              {totalCount.toLocaleString()} messages
-            </p>
+            <h2 className="font-black text-lg text-slate-900 dark:text-slate-100 leading-none tracking-tight">{headerName}</h2>
+            <div className="flex items-center gap-3 mt-1.5">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">
+                {totalCount.toLocaleString()} messages
+              </p>
+              {displayName && displayName !== conversationId && (
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[8px] font-black text-slate-400 uppercase">
+                  {conversationId}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="relative">
             <button
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-sm font-bold"
-              title="Jump to date"
-              aria-label="Jump to date"
-              aria-expanded={showDatePicker}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                showDatePicker ? "bg-slate-900 text-white" : "text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
+              )}
             >
-              {"\u{1F4C5}"} Jump
+              <Hash className="w-4 h-4" /> Jump
             </button>
-            {showDatePicker && (
-              <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-4 z-20 w-64">
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Jump to Date</p>
-                <input
-                  type="date"
-                  value={jumpDate}
-                  onChange={(e) => setJumpDate(e.target.value)}
-                  className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-500 outline-none dark:bg-slate-700 dark:text-slate-200"
-                />
-                <button
-                  onClick={handleJumpToDate}
-                  disabled={!jumpDate}
-                  className="w-full bg-slate-900 dark:bg-slate-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-slate-800 dark:hover:bg-slate-500 disabled:opacity-40 transition-all"
-                >
-                  Go
-                </button>
-              </div>
-            )}
+            <AnimatePresence>
+              {showDatePicker && (
+                <div className="absolute right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl p-5 z-20 w-72 animate-in fade-in slide-in-from-top-2">
+                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-widest">Jump to History</p>
+                  <input
+                    type="date"
+                    value={jumpDate}
+                    onChange={(e) => setJumpDate(e.target.value)}
+                    className="w-full border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-purple-500/50 outline-none dark:bg-slate-900 dark:text-slate-200 transition-all"
+                  />
+                  <button
+                    onClick={handleJumpToDate}
+                    disabled={!jumpDate}
+                    className="w-full bg-purple-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-500 disabled:opacity-40 transition-all shadow-lg shadow-purple-500/20"
+                  >
+                    Execute Jump
+                  </button>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
           <div className="relative group">
             <button
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-sm font-bold"
-              title="Export conversation"
-              aria-label="Export conversation"
+              className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-all flex items-center gap-2"
               disabled={exporting}
             >
-              {exporting ? "\u{23F3}" : "\u{1F4E4}"} Export
+              {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Export
             </button>
-            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden z-20 hidden group-hover:block">
-              <button onClick={() => handleExport("text")} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 font-medium dark:text-slate-200">
-                Plain Text (.txt)
+            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-20 hidden group-hover:block w-48">
+              <button onClick={() => handleExport("text")} className="block w-full text-left px-5 py-3 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200 transition-colors">
+                Archive (.txt)
               </button>
-              <button onClick={() => handleExport("json")} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 font-medium dark:text-slate-200">
-                JSON (.json)
+              <button onClick={() => handleExport("json")} className="block w-full text-left px-5 py-3 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200 transition-colors">
+                Database (.json)
               </button>
             </div>
           </div>
@@ -432,7 +482,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
 
       {loading && initialLoad ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-slate-900 dark:border-t-slate-300 rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-slate-200 dark:border-slate-800 border-t-purple-500 rounded-full animate-spin" />
         </div>
       ) : (
         <Virtuoso
@@ -445,6 +495,15 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
           overscan={200}
         />
       )}
+
+      <MediaViewer
+        isOpen={viewerIndex >= 0}
+        onClose={() => setViewerIndex(-1)}
+        items={chatMediaItems}
+        currentIndex={viewerIndex}
+        onIndexChange={setViewerIndex}
+      />
     </div>
   );
 }
+

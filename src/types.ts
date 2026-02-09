@@ -34,6 +34,8 @@ export interface Event {
   metadata: string | null;
 }
 
+export type DownloadStatus = "Pending" | "Downloading" | "Downloaded" | "Failed";
+
 export interface Memory {
   id: string;
   timestamp: string;
@@ -42,7 +44,25 @@ export interface Memory {
   longitude: number | null;
   media_path: string | null;
   export_id: string;
+  download_url: string | null;
+  proxy_url: string | null;
+  download_status: DownloadStatus;
 }
+
+export interface DownloadProgress {
+  memory_id: string;
+  progress: number;
+  status: string;
+  bytes_downloaded: number;
+  total_bytes: number | null;
+}
+
+export interface DiskSpaceInfo {
+  available_bytes: number;
+  total_bytes: number;
+  mount_point: string;
+}
+
 
 export interface ExportStats {
   total_messages: number;

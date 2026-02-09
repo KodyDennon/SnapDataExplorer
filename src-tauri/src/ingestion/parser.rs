@@ -1,11 +1,11 @@
-use std::path::{Path, PathBuf};
-use std::fs;
-use kuchikiki::traits::*;
-use crate::models::{Event, Conversation, Person, Memory};
 use crate::error::AppResult;
-use chrono::{DateTime, Utc, TimeZone, NaiveDateTime};
-use uuid::Uuid;
+use crate::models::{Conversation, Event, Memory, Person};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use kuchikiki::traits::*;
 use serde_json::Value;
+use std::fs;
+use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 pub struct ChatParser;
 
@@ -15,7 +15,8 @@ impl ChatParser {
         let html = fs::read_to_string(path)?;
         let document = kuchikiki::parse_html().one(html);
 
-        let conversation_id = path.file_stem()
+        let conversation_id = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .replace("subpage_", "");
@@ -62,7 +63,12 @@ impl ChatParser {
         conversation.message_count = events.len() as i32;
         conversation.last_event_at = events.last().map(|e| e.timestamp);
 
-        log::debug!("parse_subpage: {:?} -> {} events, display_name={:?}", path.file_name(), events.len(), conversation.display_name);
+        log::debug!(
+            "parse_subpage: {:?} -> {} events, display_name={:?}",
+            path.file_name(),
+            events.len(),
+            conversation.display_name
+        );
         Ok((conversation, events))
     }
 
@@ -71,7 +77,10 @@ impl ChatParser {
 
         let event_type = Self::detect_event_type(node);
 
-        let content = node.select_first("p").ok().map(|p| p.text_contents().trim().to_string());
+        let content = node
+            .select_first("p")
+            .ok()
+            .map(|p| p.text_contents().trim().to_string());
 
         let timestamp_text = node.select_first("h6").ok()?.text_contents();
         let timestamp = Self::try_parse_timestamp(&timestamp_text)?;
@@ -98,9 +107,17 @@ impl ChatParser {
                 let text = span.text_contents();
                 let trimmed = text.trim();
                 match trimmed {
-                    "TEXT" | "MEDIA" | "MISSED_VIDEO_CHAT" | "MISSED_AUDIO_CHAT"
-                    | "STATUSPARTICIPANTREMOVED" | "NOTE" | "SNAP" | "STICKER"
-                    | "SHARE" | "STATUSPARTICIPANTADDED" | "STATUSCONVERSATIONNAMECHANGED" => {
+                    "TEXT"
+                    | "MEDIA"
+                    | "MISSED_VIDEO_CHAT"
+                    | "MISSED_AUDIO_CHAT"
+                    | "STATUSPARTICIPANTREMOVED"
+                    | "NOTE"
+                    | "SNAP"
+                    | "STICKER"
+                    | "SHARE"
+                    | "STATUSPARTICIPANTADDED"
+                    | "STATUSCONVERSATIONNAMECHANGED" => {
                         return trimmed.to_string();
                     }
                     _ => {}
@@ -138,9 +155,15 @@ impl ChatParser {
             for link in links {
                 if let Some(href) = link.attributes.borrow().get("href") {
                     let lower = href.to_lowercase();
-                    if lower.ends_with(".jpg") || lower.ends_with(".jpeg") || lower.ends_with(".png")
-                        || lower.ends_with(".mp4") || lower.ends_with(".mov") || lower.ends_with(".webp")
-                        || lower.ends_with(".heif") || lower.ends_with(".gif") {
+                    if lower.ends_with(".jpg")
+                        || lower.ends_with(".jpeg")
+                        || lower.ends_with(".png")
+                        || lower.ends_with(".mp4")
+                        || lower.ends_with(".mov")
+                        || lower.ends_with(".webp")
+                        || lower.ends_with(".heif")
+                        || lower.ends_with(".gif")
+                    {
                         refs.push(PathBuf::from(href));
                     }
                 }
@@ -171,13 +194,22 @@ impl PersonParser {
         let json: Value = serde_json::from_str(&content)?;
         let mut people = Vec::new();
 
-        let categories = ["Friends", "Blocked Users", "Deleted Friends", "Hidden Friend Suggestions"];
+        let categories = [
+            "Friends",
+            "Blocked Users",
+            "Deleted Friends",
+            "Hidden Friend Suggestions",
+        ];
 
         for cat in categories {
             if let Some(list) = json.get(cat).and_then(|v| v.as_array()) {
                 for entry in list {
                     let username = entry.get("Username").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    let display_name = entry.get("Display Name").and_then(|v| v.as_str()).filter(|s| !s.is_empty()).map(|s| s.to_string());
+                    let display_name = entry
+                        .get("Display Name")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string());
 
                     if !username.is_empty() {
                         people.push(Person { username, display_name });
@@ -201,7 +233,11 @@ impl MemoryParser {
         if let Some(saved_media) = json.get("Saved Media").and_then(|v| v.as_array()) {
             for entry in saved_media {
                 let date_str = entry.get("Date").and_then(|v| v.as_str()).unwrap_or("");
-                let media_type = entry.get("Media Type").and_then(|v| v.as_str()).unwrap_or("Image").to_string();
+                let media_type = entry
+                    .get("Media Type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Image")
+                    .to_string();
                 let location_str = entry.get("Location").and_then(|v| v.as_str()).unwrap_or("");
 
                 let timestamp = Self::parse_memory_timestamp(date_str);
@@ -212,6 +248,15 @@ impl MemoryParser {
 
                 let (latitude, longitude) = Self::parse_location(location_str);
 
+                let download_url = entry
+                    .get("Media Download Url")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let proxy_url = entry
+                    .get("Download Link")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
                 memories.push(Memory {
                     id: Uuid::new_v4().to_string(),
                     timestamp,
@@ -220,6 +265,9 @@ impl MemoryParser {
                     longitude,
                     media_path: None,
                     export_id: export_id.to_string(),
+                    download_url,
+                    proxy_url,
+                    download_status: crate::models::DownloadStatus::Pending,
                 });
             }
         }
@@ -284,7 +332,8 @@ impl ChatJsonParser {
                         let media_ids: Vec<String> = if media_ids_raw.is_empty() {
                             Vec::new()
                         } else {
-                            media_ids_raw.split(" | ")
+                            media_ids_raw
+                                .split(" | ")
                                 .map(|s| s.trim().to_string())
                                 .filter(|s| !s.is_empty())
                                 .collect()
@@ -297,24 +346,35 @@ impl ChatJsonParser {
                         // Build metadata JSON with media_ids and other fields
                         let mut metadata = serde_json::Map::new();
                         if !media_ids.is_empty() {
-                            metadata.insert("media_ids".to_string(), Value::Array(
-                                media_ids.iter().map(|id| Value::String(id.clone())).collect()
-                            ));
+                            metadata.insert(
+                                "media_ids".to_string(),
+                                Value::Array(media_ids.iter().map(|id| Value::String(id.clone())).collect()),
+                            );
                         }
                         if let Some(title) = conversation_title {
                             metadata.insert("conversation_title".to_string(), Value::String(title.to_string()));
                         }
                         metadata.insert("is_sender".to_string(), Value::Bool(is_sender));
 
-                        let content = if content_val.is_empty() { None } else { Some(content_val.to_string()) };
+                        let content = if content_val.is_empty() {
+                            None
+                        } else {
+                            Some(content_val.to_string())
+                        };
 
                         // Map Media Type field to event_type (they already match the convention)
                         let event_type = match media_type_str {
-                            "TEXT" | "MEDIA" | "MISSED_VIDEO_CHAT" | "MISSED_AUDIO_CHAT"
-                            | "STATUSPARTICIPANTREMOVED" | "NOTE" | "SNAP" | "STICKER"
-                            | "SHARE" | "STATUSPARTICIPANTADDED" | "STATUSCONVERSATIONNAMECHANGED" => {
-                                media_type_str.to_string()
-                            }
+                            "TEXT"
+                            | "MEDIA"
+                            | "MISSED_VIDEO_CHAT"
+                            | "MISSED_AUDIO_CHAT"
+                            | "STATUSPARTICIPANTREMOVED"
+                            | "NOTE"
+                            | "SNAP"
+                            | "STICKER"
+                            | "SHARE"
+                            | "STATUSPARTICIPANTADDED"
+                            | "STATUSCONVERSATIONNAMECHANGED" => media_type_str.to_string(),
                             _ => media_type_str.to_string(),
                         };
 
@@ -327,7 +387,11 @@ impl ChatJsonParser {
                             conversation_id: Some(conversation_key.clone()),
                             content,
                             event_type,
-                            metadata: if metadata.is_empty() { None } else { Some(serde_json::to_string(&metadata).unwrap_or_default()) },
+                            metadata: if metadata.is_empty() {
+                                None
+                            } else {
+                                Some(serde_json::to_string(&metadata).unwrap_or_default())
+                            },
                         });
                     }
                     total_events += events.len();
@@ -338,8 +402,12 @@ impl ChatJsonParser {
             }
         }
 
-        log::info!("ChatJsonParser: parsed {} conversations, {} events, {} media IDs total",
-            result.len(), total_events, media_id_count);
+        log::info!(
+            "ChatJsonParser: parsed {} conversations, {} events, {} media IDs total",
+            result.len(),
+            total_events,
+            media_id_count
+        );
         Ok(result)
     }
 }
@@ -445,13 +513,17 @@ mod tests {
     #[test]
     fn test_parse_friends_json() {
         let mut tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp, r#"{{
+        write!(
+            tmp,
+            r#"{{
             "Friends": [
                 {{"Username": "alice", "Display Name": "Alice S"}},
                 {{"Username": "bob", "Display Name": ""}}
             ],
             "Blocked Users": []
-        }}"#).unwrap();
+        }}"#
+        )
+        .unwrap();
 
         let people = PersonParser::parse_friends_json(tmp.path()).unwrap();
         assert_eq!(people.len(), 2);
@@ -463,7 +535,9 @@ mod tests {
     #[test]
     fn test_parse_memories_json() {
         let mut tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp, r#"{{
+        write!(
+            tmp,
+            r#"{{
             "Saved Media": [
                 {{
                     "Date": "2023-06-15 10:30:00 UTC",
@@ -476,7 +550,9 @@ mod tests {
                     "Location": ""
                 }}
             ]
-        }}"#).unwrap();
+        }}"#
+        )
+        .unwrap();
 
         let memories = MemoryParser::parse_memories_json(tmp.path(), "test-export").unwrap();
         assert_eq!(memories.len(), 1);
@@ -488,7 +564,9 @@ mod tests {
     #[test]
     fn test_parse_chat_history_json() {
         let mut tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp, r#"{{
+        write!(
+            tmp,
+            r#"{{
             "alice - conv1": [
                 {{
                     "From": "alice",
@@ -507,7 +585,9 @@ mod tests {
                     "Media IDs": "abc123 | def456"
                 }}
             ]
-        }}"#).unwrap();
+        }}"#
+        )
+        .unwrap();
 
         let result = ChatJsonParser::parse_chat_history_json(tmp.path()).unwrap();
         assert_eq!(result.len(), 1);

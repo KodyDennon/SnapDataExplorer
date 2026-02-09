@@ -1,33 +1,42 @@
-use rusqlite::{Connection, params};
 use crate::error::AppResult;
 use crate::models::{
-    ExportSet, Conversation, Event, Person, ExportStats, ValidationStatus,
-    ExportSourceType, Memory, SearchResult, ValidationReport, MediaEntry, MessagePage,
+    Conversation, Event, ExportSet, ExportSourceType, ExportStats, MediaEntry, Memory, MessagePage, Person,
+    SearchResult, ValidationReport, ValidationStatus,
 };
-use std::path::{Path, PathBuf};
 use chrono::{DateTime, Utc};
+use rusqlite::{params, Connection};
+use std::path::{Path, PathBuf};
+
+use std::sync::Mutex;
 
 pub struct DatabaseManager {
-    conn: Connection,
+    conn: Mutex<Connection>,
 }
 
 impl DatabaseManager {
     pub fn new(db_path: &Path) -> AppResult<Self> {
         let conn = Connection::open(db_path)?;
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             PRAGMA journal_mode=WAL;
             PRAGMA synchronous=NORMAL;
             PRAGMA busy_timeout=5000;
             PRAGMA foreign_keys=ON;
-        ")?;
-        let manager = Self { conn };
+        ",
+        )?;
+        let manager = Self { conn: Mutex::new(conn) };
         manager.initialize_schema()?;
         manager.run_migrations()?;
         Ok(manager)
     }
 
+    fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
+        self.conn.lock().expect("Database mutex poisoned")
+    }
+
     fn initialize_schema(&self) -> AppResult<()> {
-        self.conn.execute_batch("
+        self.conn().execute_batch(
+            "
             CREATE TABLE IF NOT EXISTS exports (
                 id TEXT PRIMARY KEY,
                 source_path TEXT NOT NULL,
@@ -69,8 +78,16 @@ impl DatabaseManager {
                 latitude REAL,
                 longitude REAL,
                 media_path TEXT,
+                download_url TEXT,
+                proxy_url TEXT,
+                download_status TEXT NOT NULL DEFAULT 'Pending',
                 export_id TEXT NOT NULL,
                 FOREIGN KEY(export_id) REFERENCES exports(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
             );
 
             CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
@@ -87,33 +104,52 @@ impl DatabaseManager {
                 sender UNINDEXED,
                 tokenize='unicode61'
             );
-        ")?;
+        ",
+        )?;
         Ok(())
     }
 
     /// Run schema migrations for existing databases
     fn run_migrations(&self) -> AppResult<()> {
+        let conn = self.conn();
         // Add source_type column if it doesn't exist (for pre-existing DBs)
-        let has_source_type: bool = self.conn.prepare(
-            "SELECT COUNT(*) FROM pragma_table_info('exports') WHERE name = 'source_type'"
-        )?.query_row([], |row| row.get::<_, i32>(0)).unwrap_or(0) > 0;
+        let has_source_type: bool = conn
+            .prepare("SELECT COUNT(*) FROM pragma_table_info('exports') WHERE name = 'source_type'")?
+            .query_row([], |row| row.get::<_, i32>(0))
+            .unwrap_or(0)
+            > 0;
 
         if !has_source_type {
             log::info!("Migration: adding source_type column to exports table");
-            self.conn.execute_batch(
-                "ALTER TABLE exports ADD COLUMN source_type TEXT NOT NULL DEFAULT 'Folder';"
+            conn.execute_batch("ALTER TABLE exports ADD COLUMN source_type TEXT NOT NULL DEFAULT 'Folder';")?;
+        }
+
+        // Add memory download columns
+        let has_download_status: bool = conn
+            .prepare("SELECT COUNT(*) FROM pragma_table_info('memories') WHERE name = 'download_status'")?
+            .query_row([], |row| row.get::<_, i32>(0))
+            .unwrap_or(0)
+            > 0;
+
+        if !has_download_status {
+            log::info!("Migration: adding download columns to memories table");
+            conn.execute_batch(
+                "
+                ALTER TABLE memories ADD COLUMN download_url TEXT;
+                ALTER TABLE memories ADD COLUMN proxy_url TEXT;
+                ALTER TABLE memories ADD COLUMN download_status TEXT NOT NULL DEFAULT 'Pending';
+            ",
             )?;
         }
 
         Ok(())
     }
 
-    pub fn insert_people(&mut self, people: &[Person]) -> AppResult<()> {
-        let tx = self.conn.transaction()?;
+    pub fn insert_people(&self, people: &[Person]) -> AppResult<()> {
+        let mut conn = self.conn();
+        let tx = conn.transaction()?;
         {
-            let mut stmt = tx.prepare(
-                "INSERT OR REPLACE INTO people (username, display_name) VALUES (?1, ?2)"
-            )?;
+            let mut stmt = tx.prepare("INSERT OR REPLACE INTO people (username, display_name) VALUES (?1, ?2)")?;
             for person in people {
                 stmt.execute(params![person.username, person.display_name])?;
             }
@@ -133,7 +169,7 @@ impl DatabaseManager {
             ExportSourceType::Zip => "Zip",
             ExportSourceType::Folder => "Folder",
         };
-        self.conn.execute(
+        self.conn().execute(
             "INSERT OR REPLACE INTO exports (id, source_path, source_type, creation_date, validation_status) VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 export.id,
@@ -146,8 +182,9 @@ impl DatabaseManager {
         Ok(())
     }
 
-    pub fn batch_insert_conversations(&mut self, conversations: &[Conversation]) -> AppResult<()> {
-        let tx = self.conn.transaction()?;
+    pub fn batch_insert_conversations(&self, conversations: &[Conversation]) -> AppResult<()> {
+        let mut conn = self.conn();
+        let tx = conn.transaction()?;
         {
             let mut stmt = tx.prepare(
                 "INSERT OR REPLACE INTO conversations (id, display_name, participants, last_event_at) VALUES (?1, ?2, ?3, ?4)"
@@ -165,19 +202,18 @@ impl DatabaseManager {
         Ok(())
     }
 
-    pub fn batch_insert_events(&mut self, events: &[Event], export_id: &str) -> AppResult<()> {
-        let tx = self.conn.transaction()?;
+    pub fn batch_insert_events(&self, events: &[Event], export_id: &str) -> AppResult<()> {
+        let mut conn = self.conn();
+        let tx = conn.transaction()?;
         {
             let mut event_stmt = tx.prepare(
                 "INSERT OR REPLACE INTO events (id, timestamp, sender, export_id, conversation_id, content, event_type, media_references, metadata)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"
             )?;
             // FTS5 doesn't support REPLACE — delete any existing entry first, then insert
-            let mut fts_delete_stmt = tx.prepare(
-                "DELETE FROM events_fts WHERE event_id = ?1"
-            )?;
+            let mut fts_delete_stmt = tx.prepare("DELETE FROM events_fts WHERE event_id = ?1")?;
             let mut fts_stmt = tx.prepare(
-                "INSERT INTO events_fts (content, event_id, conversation_id, sender) VALUES (?1, ?2, ?3, ?4)"
+                "INSERT INTO events_fts (content, event_id, conversation_id, sender) VALUES (?1, ?2, ?3, ?4)",
             )?;
             for event in events {
                 event_stmt.execute(params![
@@ -197,12 +233,7 @@ impl DatabaseManager {
                 if let Some(ref content) = event.content {
                     if !content.trim().is_empty() {
                         let _ = fts_delete_stmt.execute(params![event.id]);
-                        fts_stmt.execute(params![
-                            content,
-                            event.id,
-                            event.conversation_id,
-                            event.sender
-                        ])?;
+                        fts_stmt.execute(params![content, event.id, event.conversation_id, event.sender])?;
                     }
                 }
             }
@@ -211,14 +242,21 @@ impl DatabaseManager {
         Ok(())
     }
 
-    pub fn batch_insert_memories(&mut self, memories: &[Memory]) -> AppResult<()> {
-        let tx = self.conn.transaction()?;
+    pub fn batch_insert_memories(&self, memories: &[Memory]) -> AppResult<()> {
+        let mut conn = self.conn();
+        let tx = conn.transaction()?;
         {
             let mut stmt = tx.prepare(
-                "INSERT OR REPLACE INTO memories (id, timestamp, media_type, latitude, longitude, media_path, export_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+                "INSERT OR REPLACE INTO memories (id, timestamp, media_type, latitude, longitude, media_path, download_url, proxy_url, download_status, export_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
             )?;
             for memory in memories {
+                let status_str = match memory.download_status {
+                    crate::models::DownloadStatus::Pending => "Pending",
+                    crate::models::DownloadStatus::Downloading => "Downloading",
+                    crate::models::DownloadStatus::Downloaded => "Downloaded",
+                    crate::models::DownloadStatus::Failed => "Failed",
+                };
                 stmt.execute(params![
                     memory.id,
                     memory.timestamp.to_rfc3339(),
@@ -226,6 +264,9 @@ impl DatabaseManager {
                     memory.latitude,
                     memory.longitude,
                     memory.media_path.as_ref().map(|p| p.to_string_lossy().to_string()),
+                    memory.download_url,
+                    memory.proxy_url,
+                    status_str,
                     memory.export_id
                 ])?;
             }
@@ -235,7 +276,8 @@ impl DatabaseManager {
     }
 
     pub fn get_conversations(&self) -> AppResult<Vec<Conversation>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn();
+        let mut stmt = conn.prepare(
             "SELECT c.id, c.display_name, c.participants, c.last_event_at,
              (SELECT COUNT(*) FROM events WHERE conversation_id = c.id) as msg_count,
              p.display_name as resolved_name,
@@ -249,7 +291,11 @@ impl DatabaseManager {
             let participants_json: String = row.get(2)?;
             let participants: Vec<String> = serde_json::from_str(&participants_json).unwrap_or_default();
             let last_event_at_str: Option<String> = row.get(3)?;
-            let last_event_at = last_event_at_str.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&chrono::Utc)));
+            let last_event_at = last_event_at_str.and_then(|s| {
+                chrono::DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+            });
 
             let resolved_name: Option<String> = row.get(5).ok();
             let display_name = resolved_name.or_else(|| row.get::<_, Option<String>>(1).ok().flatten());
@@ -274,36 +320,51 @@ impl DatabaseManager {
     }
 
     pub fn get_export_stats(&self) -> AppResult<ExportStats> {
-        let total_messages: i32 = self.conn.query_row("SELECT COUNT(*) FROM events", [], |r| r.get(0))?;
-        let total_conversations: i32 = self.conn.query_row("SELECT COUNT(*) FROM conversations", [], |r| r.get(0))?;
-        let total_memories: i32 = self.conn.query_row("SELECT COUNT(*) FROM memories", [], |r| r.get(0)).unwrap_or(0);
+        let conn = self.conn();
+        let total_messages: i32 = conn.query_row("SELECT COUNT(*) FROM events", [], |r| r.get(0))?;
+        let total_conversations: i32 = conn.query_row("SELECT COUNT(*) FROM conversations", [], |r| r.get(0))?;
+        let total_memories: i32 = conn
+            .query_row("SELECT COUNT(*) FROM memories", [], |r| r.get(0))
+            .unwrap_or(0);
 
-        let total_media_files: i32 = self.conn.query_row(
-            "SELECT COUNT(*) FROM events WHERE media_references != '[]' AND media_references IS NOT NULL", [], |r| r.get(0)
+        let total_media_files: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE media_references != '[]' AND media_references IS NOT NULL",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+
+        let missing_media_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM events WHERE event_type IN ('MEDIA', 'SNAP', 'SNAP_VIDEO', 'NOTE', 'STICKER') AND (media_references = '[]' OR media_references IS NULL)",
+            [],
+            |r| r.get(0),
         ).unwrap_or(0);
 
-        let missing_media_count: i32 = self.conn.query_row(
-            "SELECT COUNT(*) FROM events WHERE event_type IN ('MEDIA', 'SNAP', 'SNAP_VIDEO', 'NOTE', 'STICKER') AND (media_references = '[]' OR media_references IS NULL)", [], |r| r.get(0)
-        ).unwrap_or(0);
-
-        let mut stmt = self.conn.prepare(
+        let mut stmt = conn.prepare(
             "SELECT COALESCE(p.display_name, e.sender), COUNT(*) as cnt
              FROM events e
              LEFT JOIN people p ON e.sender = p.username
              GROUP BY e.sender
              ORDER BY cnt DESC
-             LIMIT 5"
+             LIMIT 5",
         )?;
 
-        let top_contacts = stmt.query_map([], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })?.collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
+        let top_contacts = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
-        let start_date_str: Option<String> = self.conn.query_row("SELECT MIN(timestamp) FROM events", [], |r| r.get(0)).ok();
-        let end_date_str: Option<String> = self.conn.query_row("SELECT MAX(timestamp) FROM events", [], |r| r.get(0)).ok();
+        let start_date_str: Option<String> = conn
+            .query_row("SELECT MIN(timestamp) FROM events", [], |r| r.get(0))
+            .ok();
+        let end_date_str: Option<String> = conn
+            .query_row("SELECT MAX(timestamp) FROM events", [], |r| r.get(0))
+            .ok();
 
-        let start_date = start_date_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
-        let end_date = end_date_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
+        let start_date =
+            start_date_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
+        let end_date =
+            end_date_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
 
         Ok(ExportStats {
             total_messages,
@@ -318,9 +379,9 @@ impl DatabaseManager {
     }
 
     pub fn get_exports(&self) -> AppResult<Vec<ExportSet>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, source_path, source_type, creation_date, validation_status FROM exports"
-        )?;
+        let conn = self.conn();
+        let mut stmt =
+            conn.prepare("SELECT id, source_path, source_type, creation_date, validation_status FROM exports")?;
 
         let export_iter = stmt.query_map([], |row| {
             let source_path_str: String = row.get(1)?;
@@ -345,7 +406,8 @@ impl DatabaseManager {
                 source_path: PathBuf::from(source_path_str),
                 source_type,
                 extraction_path: None,
-                creation_date: creation_date_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
+                creation_date: creation_date_str
+                    .and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
                 validation_status,
             })
         })?;
@@ -359,7 +421,8 @@ impl DatabaseManager {
     }
 
     pub fn get_messages(&self, conversation_id: &str) -> AppResult<Vec<Event>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn();
+        let mut stmt = conn.prepare(
             "SELECT e.id, e.timestamp, e.sender, e.conversation_id, e.content, e.event_type, e.media_references, e.metadata, p.display_name
              FROM events e
              LEFT JOIN people p ON e.sender = p.username
@@ -404,13 +467,14 @@ impl DatabaseManager {
         let offset = offset.max(0);
         let limit = limit.clamp(1, 2000);
 
-        let total_count: i32 = self.conn.query_row(
+        let conn = self.conn();
+        let total_count: i32 = conn.query_row(
             "SELECT COUNT(*) FROM events WHERE conversation_id = ?1",
             [conversation_id],
             |r| r.get(0),
         )?;
 
-        let mut stmt = self.conn.prepare(
+        let mut stmt = conn.prepare(
             "SELECT e.id, e.timestamp, e.sender, e.conversation_id, e.content, e.event_type, e.media_references, e.metadata, p.display_name
              FROM events e
              LEFT JOIN people p ON e.sender = p.username
@@ -481,7 +545,8 @@ impl DatabaseManager {
 
         let limit = limit.clamp(1, 500);
 
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn();
+        let mut stmt = conn.prepare(
             "SELECT f.event_id, f.conversation_id, f.sender, f.content, e.timestamp, e.event_type,
                     c.display_name as convo_name, p.display_name as sender_name
              FROM events_fts f
@@ -490,43 +555,46 @@ impl DatabaseManager {
              LEFT JOIN people p ON f.sender = p.username
              WHERE events_fts MATCH ?1
              ORDER BY rank
-             LIMIT ?2"
+             LIMIT ?2",
         )?;
 
-        let results = stmt.query_map(params![sanitized, limit], |row| {
-            let timestamp_str: String = row.get(4)?;
-            let timestamp = chrono::DateTime::parse_from_rfc3339(&timestamp_str)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_else(|e| {
-                    log::warn!("Bad timestamp in DB: '{}': {}", timestamp_str, e);
-                    chrono::DateTime::<chrono::Utc>::MIN_UTC
-                });
+        let results = stmt
+            .query_map(params![sanitized, limit], |row| {
+                let timestamp_str: String = row.get(4)?;
+                let timestamp = chrono::DateTime::parse_from_rfc3339(&timestamp_str)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .unwrap_or_else(|e| {
+                        log::warn!("Bad timestamp in DB: '{}': {}", timestamp_str, e);
+                        chrono::DateTime::<chrono::Utc>::MIN_UTC
+                    });
 
-            Ok(SearchResult {
-                event_id: row.get(0)?,
-                conversation_id: row.get(1)?,
-                conversation_name: row.get(6)?,
-                sender: row.get(2)?,
-                sender_name: row.get(7)?,
-                content: row.get(3)?,
-                timestamp,
-                event_type: row.get(5)?,
-            })
-        })?.collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
+                Ok(SearchResult {
+                    event_id: row.get(0)?,
+                    conversation_id: row.get(1)?,
+                    conversation_name: row.get(6)?,
+                    sender: row.get(2)?,
+                    sender_name: row.get(7)?,
+                    content: row.get(3)?,
+                    timestamp,
+                    event_type: row.get(5)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
         Ok(results)
     }
 
     pub fn get_memories(&self, export_id: Option<&str>) -> AppResult<Vec<Memory>> {
         let query = if export_id.is_some() {
-            "SELECT id, timestamp, media_type, latitude, longitude, media_path, export_id
+            "SELECT id, timestamp, media_type, latitude, longitude, media_path, download_url, proxy_url, download_status, export_id
              FROM memories WHERE export_id = ?1 ORDER BY timestamp DESC"
         } else {
-            "SELECT id, timestamp, media_type, latitude, longitude, media_path, export_id
+            "SELECT id, timestamp, media_type, latitude, longitude, media_path, download_url, proxy_url, download_status, export_id
              FROM memories ORDER BY timestamp DESC"
         };
 
-        let mut stmt = self.conn.prepare(query)?;
+        let conn = self.conn();
+        let mut stmt = conn.prepare(query)?;
 
         let rows = if let Some(eid) = export_id {
             stmt.query_map([eid], Self::map_memory_row)?
@@ -546,10 +614,17 @@ impl DatabaseManager {
         let timestamp = chrono::DateTime::parse_from_rfc3339(&timestamp_str)
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .unwrap_or_else(|e| {
-                    log::warn!("Bad timestamp in DB: '{}': {}", timestamp_str, e);
-                    chrono::DateTime::<chrono::Utc>::MIN_UTC
-                });
+                log::warn!("Bad timestamp in DB: '{}': {}", timestamp_str, e);
+                chrono::DateTime::<chrono::Utc>::MIN_UTC
+            });
         let media_path_str: Option<String> = row.get(5)?;
+        let status_str: String = row.get(8)?;
+        let download_status = match status_str.as_str() {
+            "Downloading" => crate::models::DownloadStatus::Downloading,
+            "Downloaded" => crate::models::DownloadStatus::Downloaded,
+            "Failed" => crate::models::DownloadStatus::Failed,
+            _ => crate::models::DownloadStatus::Pending,
+        };
 
         Ok(Memory {
             id: row.get(0)?,
@@ -558,8 +633,26 @@ impl DatabaseManager {
             latitude: row.get(3)?,
             longitude: row.get(4)?,
             media_path: media_path_str.map(PathBuf::from),
-            export_id: row.get(6)?,
+            export_id: row.get(9)?,
+            download_url: row.get(6)?,
+            proxy_url: row.get(7)?,
+            download_status,
         })
+    }
+
+    pub fn get_setting(&self, key: &str) -> AppResult<Option<String>> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
+        let result = stmt.query_row([key], |row| row.get(0)).ok();
+        Ok(result)
+    }
+
+    pub fn set_setting(&self, key: &str, value: &str) -> AppResult<()> {
+        self.conn().execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+            params![key, value],
+        )?;
+        Ok(())
     }
 
     pub fn get_all_media(&self, limit: i32, offset: i32) -> AppResult<Vec<MediaEntry>> {
@@ -569,11 +662,12 @@ impl DatabaseManager {
         // Use a single SQL query with pagination. We over-fetch events slightly since
         // one event can have multiple media_references, but this is far better than
         // loading the entire table into memory.
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn();
+        let mut stmt = conn.prepare(
             "SELECT media_references, event_type, timestamp, conversation_id FROM events
              WHERE media_references != '[]' AND media_references IS NOT NULL
              ORDER BY timestamp DESC
-             LIMIT ?1 OFFSET ?2"
+             LIMIT ?1 OFFSET ?2",
         )?;
 
         let mut entries = Vec::new();
@@ -610,10 +704,10 @@ impl DatabaseManager {
         }
 
         // Also include memories media (typically small count)
-        let mut mem_stmt = self.conn.prepare(
+        let mut mem_stmt = conn.prepare(
             "SELECT media_path, media_type, timestamp FROM memories
              WHERE media_path IS NOT NULL
-             ORDER BY timestamp DESC"
+             ORDER BY timestamp DESC",
         )?;
         let mem_rows = mem_stmt.query_map([], |row| {
             let media_path_str: String = row.get(0)?;
@@ -647,7 +741,7 @@ impl DatabaseManager {
     pub fn get_message_index_at_date(&self, conversation_id: &str, date: &str) -> AppResult<i32> {
         // date is expected as "YYYY-MM-DD"
         let target = format!("{}T00:00:00+00:00", date);
-        let index: i32 = self.conn.query_row(
+        let index: i32 = self.conn().query_row(
             "SELECT COUNT(*) FROM events
              WHERE conversation_id = ?1 AND timestamp < ?2",
             params![conversation_id, target],
@@ -657,38 +751,39 @@ impl DatabaseManager {
     }
 
     pub fn get_activity_dates(&self, conversation_id: &str) -> AppResult<Vec<String>> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn();
+        let mut stmt = conn.prepare(
             "SELECT DISTINCT substr(timestamp, 1, 10) as dt FROM events
              WHERE conversation_id = ?1
-             ORDER BY dt ASC"
+             ORDER BY dt ASC",
         )?;
-        let dates = stmt.query_map([conversation_id], |row| {
-            row.get(0)
-        })?.collect::<std::result::Result<Vec<String>, _>>()?;
+        let dates = stmt
+            .query_map([conversation_id], |row| row.get(0))?
+            .collect::<std::result::Result<Vec<String>, _>>()?;
         Ok(dates)
     }
 
     /// Generate a data integrity report for the dashboard.
     pub fn get_validation_report(&self) -> AppResult<ValidationReport> {
-        let total_media_referenced: i32 = self.conn.query_row(
-            "SELECT COUNT(*) FROM events WHERE event_type = 'MEDIA'", [], |r| r.get(0)
-        )?;
-        let media_found: i32 = self.conn.query_row(
+        let conn = self.conn();
+        let total_media_referenced: i32 =
+            conn.query_row("SELECT COUNT(*) FROM events WHERE event_type = 'MEDIA'", [], |r| {
+                r.get(0)
+            })?;
+        let media_found: i32 = conn.query_row(
             "SELECT COUNT(*) FROM events WHERE event_type = 'MEDIA' AND media_references != '[]' AND media_references IS NOT NULL",
             [], |r| r.get(0)
         )?;
         let media_missing = total_media_referenced - media_found;
 
-        let total_html_files: i32 = self.conn.query_row(
-            "SELECT COUNT(*) FROM conversations", [], |r| r.get(0)
-        )?;
+        let total_html_files: i32 = conn.query_row("SELECT COUNT(*) FROM conversations", [], |r| r.get(0))?;
 
         let mut warnings = Vec::new();
         if media_missing > 0 {
             warnings.push(format!("{} media events have no linked file", media_missing));
         }
 
-        let empty_convos: i32 = self.conn.query_row(
+        let empty_convos: i32 = conn.query_row(
             "SELECT COUNT(*) FROM conversations c WHERE NOT EXISTS (SELECT 1 FROM events WHERE conversation_id = c.id)",
             [], |r| r.get(0)
         ).unwrap_or(0);
@@ -720,7 +815,10 @@ mod tests {
 
     #[test]
     fn test_sanitize_fts_query_simple() {
-        assert_eq!(DatabaseManager::sanitize_fts_query("hello world"), "\"hello\" \"world\"");
+        assert_eq!(
+            DatabaseManager::sanitize_fts_query("hello world"),
+            "\"hello\" \"world\""
+        );
     }
 
     #[test]
@@ -732,14 +830,20 @@ mod tests {
     #[test]
     fn test_sanitize_fts_query_special_chars() {
         // FTS5 operators should be quoted
-        assert_eq!(DatabaseManager::sanitize_fts_query("hello OR world"), "\"hello\" \"OR\" \"world\"");
+        assert_eq!(
+            DatabaseManager::sanitize_fts_query("hello OR world"),
+            "\"hello\" \"OR\" \"world\""
+        );
         assert_eq!(DatabaseManager::sanitize_fts_query("test*"), "\"test*\"");
     }
 
     #[test]
     fn test_sanitize_fts_query_quotes() {
         // Double quotes within words are escaped
-        assert_eq!(DatabaseManager::sanitize_fts_query("say \"hi\""), "\"say\" \"\"\"hi\"\"\"");
+        assert_eq!(
+            DatabaseManager::sanitize_fts_query("say \"hi\""),
+            "\"say\" \"\"\"hi\"\"\""
+        );
     }
 
     #[test]
@@ -785,17 +889,15 @@ mod tests {
 
     #[test]
     fn test_batch_insert_and_get_conversations() {
-        let mut db = test_db();
-        let convos = vec![
-            Conversation {
-                id: "conv1".to_string(),
-                display_name: Some("Alice".to_string()),
-                participants: vec!["alice".to_string(), "bob".to_string()],
-                last_event_at: Some(chrono::Utc::now()),
-                message_count: 5,
-                has_media: false,
-            },
-        ];
+        let db = test_db();
+        let convos = vec![Conversation {
+            id: "conv1".to_string(),
+            display_name: Some("Alice".to_string()),
+            participants: vec!["alice".to_string(), "bob".to_string()],
+            last_event_at: Some(chrono::Utc::now()),
+            message_count: 5,
+            has_media: false,
+        }];
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
             source_path: PathBuf::from("/tmp"),
@@ -803,7 +905,8 @@ mod tests {
             extraction_path: None,
             creation_date: None,
             validation_status: ValidationStatus::Valid,
-        }).unwrap();
+        })
+        .unwrap();
         db.batch_insert_conversations(&convos).unwrap();
 
         let result = db.get_conversations().unwrap();
@@ -813,7 +916,7 @@ mod tests {
 
     #[test]
     fn test_batch_insert_events_and_search() {
-        let mut db = test_db();
+        let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
             source_path: PathBuf::from("/tmp"),
@@ -821,7 +924,8 @@ mod tests {
             extraction_path: None,
             creation_date: None,
             validation_status: ValidationStatus::Valid,
-        }).unwrap();
+        })
+        .unwrap();
         db.batch_insert_conversations(&[Conversation {
             id: "conv1".to_string(),
             display_name: None,
@@ -829,21 +933,20 @@ mod tests {
             last_event_at: None,
             message_count: 0,
             has_media: false,
-        }]).unwrap();
+        }])
+        .unwrap();
 
-        let events = vec![
-            Event {
-                id: "evt1".to_string(),
-                timestamp: chrono::Utc::now(),
-                sender: "alice".to_string(),
-                sender_name: None,
-                media_references: vec![],
-                conversation_id: Some("conv1".to_string()),
-                content: Some("hello world test message".to_string()),
-                event_type: "TEXT".to_string(),
-                metadata: None,
-            },
-        ];
+        let events = vec![Event {
+            id: "evt1".to_string(),
+            timestamp: chrono::Utc::now(),
+            sender: "alice".to_string(),
+            sender_name: None,
+            media_references: vec![],
+            conversation_id: Some("conv1".to_string()),
+            content: Some("hello world test message".to_string()),
+            event_type: "TEXT".to_string(),
+            metadata: None,
+        }];
         db.batch_insert_events(&events, "e1").unwrap();
 
         // Search should find the message
@@ -861,7 +964,7 @@ mod tests {
 
     #[test]
     fn test_get_messages_page_clamping() {
-        let mut db = test_db();
+        let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
             source_path: PathBuf::from("/tmp"),
@@ -869,7 +972,8 @@ mod tests {
             extraction_path: None,
             creation_date: None,
             validation_status: ValidationStatus::Valid,
-        }).unwrap();
+        })
+        .unwrap();
         db.batch_insert_conversations(&[Conversation {
             id: "conv1".to_string(),
             display_name: None,
@@ -877,7 +981,8 @@ mod tests {
             last_event_at: None,
             message_count: 0,
             has_media: false,
-        }]).unwrap();
+        }])
+        .unwrap();
 
         // Even with negative offset/limit, should not crash
         let page = db.get_messages_page("conv1", -5, -10).unwrap();
@@ -903,7 +1008,8 @@ mod tests {
             extraction_path: None,
             creation_date: None,
             validation_status: ValidationStatus::Valid,
-        }).unwrap();
+        })
+        .unwrap();
         let stats = db.get_export_stats().unwrap();
         assert_eq!(stats.total_messages, 0);
         assert_eq!(stats.total_conversations, 0);
@@ -911,7 +1017,7 @@ mod tests {
 
     #[test]
     fn test_insert_people_and_resolve() {
-        let mut db = test_db();
+        let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
             source_path: PathBuf::from("/tmp"),
@@ -919,10 +1025,12 @@ mod tests {
             extraction_path: None,
             creation_date: None,
             validation_status: ValidationStatus::Valid,
-        }).unwrap();
-        let people = vec![
-            Person { username: "alice".to_string(), display_name: Some("Alice Smith".to_string()) },
-        ];
+        })
+        .unwrap();
+        let people = vec![Person {
+            username: "alice".to_string(),
+            display_name: Some("Alice Smith".to_string()),
+        }];
         db.insert_people(&people).unwrap();
 
         // Person name should resolve in conversations list
@@ -933,7 +1041,8 @@ mod tests {
             last_event_at: None,
             message_count: 0,
             has_media: false,
-        }]).unwrap();
+        }])
+        .unwrap();
         let convos = db.get_conversations().unwrap();
         assert_eq!(convos[0].display_name.as_deref(), Some("Alice Smith"));
     }
@@ -948,7 +1057,8 @@ mod tests {
             extraction_path: None,
             creation_date: None,
             validation_status: ValidationStatus::Valid,
-        }).unwrap();
+        })
+        .unwrap();
         let report = db.get_validation_report().unwrap();
         assert_eq!(report.total_html_files, 0);
         assert_eq!(report.media_missing, 0);
