@@ -29,7 +29,7 @@ chrono = { version = "0.4.42", features = ["serde"] }
 thiserror = "2.0.17"
 tauri-plugin-dialog = "2.4.2"
 kuchikiki = "0.8.8-speedreader"
-uuid = { version = "1.19.0", features = ["v4"] }
+uuid = { version = "1.20.0", features = ["v4"] }
 zip = "7.0.0"
 dirs = "6.0.0"
 log = "0.4"
