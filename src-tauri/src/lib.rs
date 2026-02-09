@@ -18,8 +18,8 @@ use crate::ingestion::extractor::ZipExtractor;
 use crate::ingestion::media_linker::MediaLinker;
 use crate::ingestion::parser::{ChatJsonParser, ChatParser, MemoryParser, PersonParser, SnapHistoryParser};
 use crate::models::{
-    Conversation, Event, ExportSet, ExportSourceType, ExportStats, IngestionProgress, IngestionResult,
-    MediaStreamEntry, Memory, MessagePage, PaginatedMedia, SearchResult, ValidationReport,
+    Conversation, Event, ExportSet, ExportSourceType, ExportStats, IngestionProgress, IngestionResult, Memory,
+    MessagePage, PaginatedMedia, SearchResult, ValidationReport,
 };
 use crate::storage::{DiskSpaceInfo, StorageManager};
 use rayon::prelude::*;
