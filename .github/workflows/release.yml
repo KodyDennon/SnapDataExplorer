@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.3.0)'
+        required: true
 
 permissions:
   contents: write
@@ -30,7 +35,13 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Resolve tag
+        id: tag
+        run: echo "name=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,8 +80,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Snap Data Explorer ${{ github.ref_name }}"
+          tagName: ${{ steps.tag.outputs.name }}
+          releaseName: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
           releaseBody: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
           releaseDraft: true
           prerelease: true

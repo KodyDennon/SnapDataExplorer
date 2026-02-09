@@ -11,7 +11,8 @@
       "npmPublish": false
     }],
     ["@semantic-release/exec", {
-      "prepareCmd": "bash scripts/update-versions.sh ${nextRelease.version}"
+      "prepareCmd": "bash scripts/update-versions.sh ${nextRelease.version}",
+      "successCmd": "echo v${nextRelease.version} > /tmp/released-tag.txt"
     }],
     ["@semantic-release/git", {
       "assets": [

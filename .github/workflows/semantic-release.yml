@@ -1,4 +1,4 @@
-name: Release
+name: Version
 
 on:
   push:
@@ -12,11 +12,11 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -27,9 +27,28 @@ jobs:
 
       - name: Run semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
         run: npx semantic-release
+
+      - name: Check for new release
+        id: check
+        run: |
+          if [ -f /tmp/released-tag.txt ]; then
+            TAG=$(cat /tmp/released-tag.txt | tr -d '[:space:]')
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "Released $TAG"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "No release needed"
+          fi
+
+      - name: Trigger binary builds
+        if: steps.check.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run release.yml -f tag=${{ steps.check.outputs.tag }}
