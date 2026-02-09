@@ -19,4 +19,4 @@ For commercial licensing inquiries, email [licensing@mail.kodydennon.com](mailto
 
 ## Why?
 
-This software was built to help individuals explore their own personal data. The licensing model ensures it remains freely available to the people it was built for, while requiring organizations with surveillance capabilities to obtain proper authorization.
+This software was built to help individuals explore their own personal data. The licensing model ensures it remains freely available to the people it was built for, while requiring organizations with surveillance capabilities to obtain proper authorization and support the continued development of the software and its open source community.
