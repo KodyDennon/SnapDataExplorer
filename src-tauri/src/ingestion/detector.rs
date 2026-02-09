@@ -170,3 +170,68 @@ impl ExportDetector {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{self, File};
+
+    fn create_valid_export(dir: &Path) {
+        File::create(dir.join("index.html")).unwrap();
+        fs::create_dir_all(dir.join("html/chat_history")).unwrap();
+        fs::create_dir_all(dir.join("chat_media")).unwrap();
+    }
+
+    #[test]
+    fn test_detect_valid_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        create_valid_export(dir.path());
+
+        let exports = ExportDetector::detect_in_directory(dir.path()).unwrap();
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports[0].validation_status, ValidationStatus::Valid);
+        assert_eq!(exports[0].source_type, ExportSourceType::Folder);
+    }
+
+    #[test]
+    fn test_detect_incomplete_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        File::create(dir.path().join("index.html")).unwrap();
+        fs::create_dir_all(dir.path().join("html")).unwrap();
+        // No chat_media or media dir → Incomplete
+
+        let exports = ExportDetector::detect_in_directory(dir.path()).unwrap();
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports[0].validation_status, ValidationStatus::Incomplete);
+    }
+
+    #[test]
+    fn test_detect_empty_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let exports = ExportDetector::detect_in_directory(dir.path()).unwrap();
+        assert!(exports.is_empty());
+    }
+
+    #[test]
+    fn test_detect_child_by_name() {
+        let parent = tempfile::tempdir().unwrap();
+        let child = parent.path().join("mydata~snapchat-export");
+        fs::create_dir_all(&child).unwrap();
+        create_valid_export(&child);
+
+        let exports = ExportDetector::detect_in_directory(parent.path()).unwrap();
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports[0].validation_status, ValidationStatus::Valid);
+    }
+
+    #[test]
+    fn test_detect_ignores_unrelated() {
+        let parent = tempfile::tempdir().unwrap();
+        let child = parent.path().join("random_folder");
+        fs::create_dir_all(&child).unwrap();
+        create_valid_export(&child);
+
+        let exports = ExportDetector::detect_in_directory(parent.path()).unwrap();
+        assert!(exports.is_empty());
+    }
+}

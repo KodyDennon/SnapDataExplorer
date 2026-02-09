@@ -16,10 +16,13 @@ sed -i '' "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
 # Update src-tauri/tauri.conf.json
 sed -i '' "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
 
-echo "Updated version to $NEW_VERSION in package.json and src-tauri/tauri.conf.json"
+# Update src-tauri/Cargo.toml
+sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
+
+echo "Updated version to $NEW_VERSION in package.json, src-tauri/tauri.conf.json, and src-tauri/Cargo.toml"
 
 # Git operations
-git add package.json src-tauri/tauri.conf.json
+git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
 git commit -m "chore(release): v$NEW_VERSION"
 git tag "v$NEW_VERSION"
 

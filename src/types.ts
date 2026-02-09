@@ -133,3 +133,22 @@ export interface PaginatedMedia {
   total_count: number;
   has_more: boolean;
 }
+
+/** Structural interface for items passed to MediaViewer. Covers Memory, Event, and MediaStreamEntry shapes. */
+export interface MediaViewerItem {
+  id?: string;
+  timestamp: string;
+  media_type: string;
+  media_path?: string | null;
+  path?: string | null;
+  media_references?: string[];
+  download_url?: string | null;
+  proxy_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  sender?: string | null;
+  sender_name?: string | null;
+  event_type?: string;
+  content?: string | null;
+  metadata?: string | null;
+}

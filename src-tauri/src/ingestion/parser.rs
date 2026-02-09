@@ -601,4 +601,105 @@ mod tests {
         assert_eq!(ids.len(), 2);
         assert_eq!(ids[0].as_str().unwrap(), "abc123");
     }
+
+    #[test]
+    fn test_chat_json_empty_media_ids() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{
+            "alice - conv1": [
+                {{
+                    "From": "alice",
+                    "Media Type": "TEXT",
+                    "Created": "2023-06-15 10:30:00 UTC",
+                    "Content": "Hello!",
+                    "IsSender": true,
+                    "Media IDs": ""
+                }}
+            ]
+        }}"#
+        )
+        .unwrap();
+
+        let result = ChatJsonParser::parse_chat_history_json(tmp.path()).unwrap();
+        let (_, events) = &result[0];
+        // Empty Media IDs → no media_ids key, or empty array
+        let meta: serde_json::Value = serde_json::from_str(events[0].metadata.as_deref().unwrap_or("{}")).unwrap();
+        let ids = meta.get("media_ids").and_then(|v| v.as_array());
+        assert!(ids.is_none() || ids.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_chat_json_single_media_id() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{
+            "bob - conv2": [
+                {{
+                    "From": "bob",
+                    "Media Type": "MEDIA",
+                    "Created": "2023-06-15 10:30:00 UTC",
+                    "Content": "",
+                    "IsSender": false,
+                    "Media IDs": "singleid123"
+                }}
+            ]
+        }}"#
+        )
+        .unwrap();
+
+        let result = ChatJsonParser::parse_chat_history_json(tmp.path()).unwrap();
+        let (_, events) = &result[0];
+        let meta: serde_json::Value = serde_json::from_str(events[0].metadata.as_ref().unwrap()).unwrap();
+        let ids = meta["media_ids"].as_array().unwrap();
+        assert_eq!(ids.len(), 1);
+        assert_eq!(ids[0].as_str().unwrap(), "singleid123");
+    }
+
+    #[test]
+    fn test_snap_history_parser_basic() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{
+            "alice - snap_convo": [
+                {{
+                    "From": "alice",
+                    "Media Type": "IMAGE",
+                    "Created": "2023-06-15 10:30:00 UTC",
+                    "IsSender": true,
+                    "Conversation Title": "Alice"
+                }},
+                {{
+                    "From": "bob",
+                    "Media Type": "VIDEO",
+                    "Created": "2023-06-15 10:31:00 UTC",
+                    "IsSender": false,
+                    "Conversation Title": "Bob"
+                }}
+            ]
+        }}"#
+        )
+        .unwrap();
+
+        let result = SnapHistoryParser::parse_snap_history_json(tmp.path()).unwrap();
+        assert_eq!(result.len(), 1);
+        let (_, events) = &result[0];
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].event_type, "SNAP");
+        assert_eq!(events[0].content.as_deref(), Some("Sent a image snap"));
+        assert_eq!(events[1].event_type, "SNAP_VIDEO");
+        assert_eq!(events[1].content.as_deref(), Some("Received a video snap"));
+    }
+
+    #[test]
+    fn test_snap_history_parser_empty() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp, "{{}}").unwrap();
+
+        let result = SnapHistoryParser::parse_snap_history_json(tmp.path()).unwrap();
+        assert!(result.is_empty());
+    }
 }

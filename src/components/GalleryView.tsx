@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { VirtuosoGrid } from "react-virtuoso";
-import { MediaStreamEntry, PaginatedMedia } from "../types";
+import { MediaStreamEntry, MediaViewerItem, PaginatedMedia } from "../types";
 import { cn } from "../lib/utils";
 import { MediaThumbnail } from "./ui/MediaThumbnail";
 import { MediaViewer } from "./ui/MediaViewer";
@@ -143,7 +143,7 @@ export function GalleryView() {
       <MediaViewer
         isOpen={viewerIndex >= 0}
         onClose={() => setViewerIndex(-1)}
-        items={filtered.map(f => ({ ...f, media_path: f.path, media_type: f.media_type as any })) as any}
+        items={filtered.map((f): MediaViewerItem => ({ ...f, media_path: f.path, media_type: f.media_type }))}
         currentIndex={viewerIndex}
         onIndexChange={setViewerIndex}
       />

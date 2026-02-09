@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "framer-motion";
-import { PaginatedMedia, MediaStreamEntry } from "../types";
+import { PaginatedMedia, MediaStreamEntry, MediaViewerItem } from "../types";
 import { cn } from "../lib/utils";
 import {
     X,
@@ -190,7 +190,7 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
             <MediaViewer
                 isOpen={viewerIndex >= 0}
                 onClose={() => setViewerIndex(-1)}
-                items={items.map(i => ({ ...i, media_path: i.path, media_type: i.media_type as any })) as any}
+                items={items.map((i): MediaViewerItem => ({ ...i, media_path: i.path, media_type: i.media_type }))}
                 currentIndex={viewerIndex}
                 onIndexChange={setViewerIndex}
             />

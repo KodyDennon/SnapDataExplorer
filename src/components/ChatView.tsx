@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
-import { Event as Message, MessagePage, Conversation } from "../types";
+import { Event as Message, MessagePage, Conversation, MediaViewerItem } from "../types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Toast } from "../hooks/useToast";
@@ -42,7 +42,7 @@ const MessageItem = React.memo(({
   onOpenMedia: (ref: string) => void,
   markFailed: (key: string) => void,
   failedMedia: Set<string>,
-  addToast: any
+  addToast: (type: Toast["type"], message: string) => void
 }) => {
   function getMediaSrc(path: string): string {
     try {
@@ -285,7 +285,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
 
   // Derive all media items for the viewer - memoized and optimized
   const chatMediaItems = useMemo(() => {
-    const items: any[] = [];
+    const items: MediaViewerItem[] = [];
     for (const msg of messages) {
       if (["MEDIA", "NOTE", "SNAP", "SNAP_VIDEO"].includes(msg.event_type)) {
         for (const ref of msg.media_references) {

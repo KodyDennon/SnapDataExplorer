@@ -752,7 +752,7 @@ async fn set_storage_path(path: String, app_handle: tauri::AppHandle) -> AppResu
 async fn get_storage_path(app_handle: tauri::AppHandle) -> AppResult<Option<String>> {
     let db = db_for_app(&app_handle)?;
     if let Some(db) = db {
-        db.get_setting("storage_path").map_err(|e| e.into())
+        db.get_setting("storage_path")
     } else {
         Ok(None)
     }

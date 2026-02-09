@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Download, Play, Image as ImageIcon, FolderOpen, MapPin, Calendar, User, AlertCircle } from 'lucide-react';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { cn } from '../../lib/utils';
-import { Memory, Event, MediaEntry } from '../../types';
+import { MediaViewerItem } from '../../types';
 
 interface MediaViewerProps {
     isOpen: boolean;
     onClose: () => void;
-    items: (Memory | Event | MediaEntry)[];
+    items: MediaViewerItem[];
     currentIndex: number;
     onIndexChange?: (index: number) => void;
 }
@@ -48,13 +48,13 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
         }
     };
 
-    const getMediaSrc = (item: any) => {
+    const getMediaSrc = (item: MediaViewerItem) => {
         const path = item.media_path || item.path || (item.media_references?.[0]);
         if (path) return convertFileSrc(path);
         return item.download_url || item.proxy_url;
     };
 
-    const getMediaType = (item: any) => {
+    const getMediaType = (item: MediaViewerItem) => {
         const type = item.media_type || (item.event_type === 'SNAP_VIDEO' ? 'Video' : 'Image');
         return type;
     };
@@ -64,7 +64,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
     const isVideo = type === 'video' || (src && src.split('?')[0].toLowerCase().endsWith('.mp4'));
 
     const openInFinder = async () => {
-        const path = (currentItem as any).media_path || (currentItem as any).path;
+        const path = currentItem.media_path || currentItem.path;
         if (path) {
             await invoke('show_in_folder', { path });
         }
@@ -106,17 +106,17 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                                         {isVideo ? <Play className="w-4 h-4 fill-current" /> : <ImageIcon className="w-4 h-4" />}
                                         {items.length > 1 ? `Media ${currentIndex + 1} of ${items.length}` : 'Media Viewer'}
                                     </span>
-                                    {(currentItem as any).timestamp && (
+                                    {currentItem.timestamp && (
                                         <span className="text-white/40 text-xs flex items-center gap-1">
                                             <Calendar className="w-3 h-3" />
-                                            {new Date((currentItem as any).timestamp).toLocaleString()}
+                                            {new Date(currentItem.timestamp).toLocaleString()}
                                         </span>
                                     )}
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                {((currentItem as any).media_path || (currentItem as any).path) && (
+                                {(currentItem.media_path || currentItem.path) && (
                                     <button
                                         onClick={openInFinder}
                                         className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-2 text-sm text-white/80"
@@ -210,22 +210,22 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                             className="absolute bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-2xl flex items-center gap-8 z-10"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {(currentItem as any).latitude && (
+                            {currentItem.latitude && (
                                 <div className="flex items-center gap-2 text-white/60 text-sm">
                                     <MapPin className="w-4 h-4 text-purple-400" />
-                                    <span>{`${(currentItem as any).latitude.toFixed(4)}, ${(currentItem as any).longitude.toFixed(4)}`}</span>
+                                    <span>{`${currentItem.latitude.toFixed(4)}, ${currentItem.longitude?.toFixed(4)}`}</span>
                                 </div>
                             )}
-                            {((currentItem as Memory).media_type) && (
+                            {currentItem.media_type && (
                                 <div className="flex items-center gap-2 text-white/60 text-sm">
                                     <ImageIcon className="w-4 h-4 text-blue-400" />
-                                    <span>{(currentItem as Memory).media_type}</span>
+                                    <span>{currentItem.media_type}</span>
                                 </div>
                             )}
-                            {((currentItem as any).sender) && (
+                            {currentItem.sender && (
                                 <div className="flex items-center gap-2 text-white/60 text-sm">
                                     <User className="w-4 h-4 text-green-400" />
-                                    <span>{(currentItem as any).sender || (currentItem as any).username}</span>
+                                    <span>{currentItem.sender_name || currentItem.sender}</span>
                                 </div>
                             )}
                         </motion.div>

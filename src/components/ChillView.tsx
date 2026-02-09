@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { Memory } from "../types";
-import { cn } from "../lib/utils";
-import { Button } from "./ui/Button";
-import { Play, Pause, SkipForward, SkipBack, Share2, Info, Maximize2, Minimize2, Shuffle } from "lucide-react";
-import { MediaViewer } from "./ui/MediaViewer";
+import { Play, Pause, SkipForward, SkipBack, Shuffle } from "lucide-react";
 
 // --- Types ---
 type ViewState = "loading" | "playing" | "paused" | "empty";
@@ -19,11 +16,7 @@ export function ChillView({ onExit }: ChillViewProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [viewState, setViewState] = useState<ViewState>("loading");
     const [showControls, setShowControls] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [autoPlay, setAutoPlay] = useState(true);
-
-    // Stats for overlay
-    const [totalMemories, setTotalMemories] = useState(0);
 
     // Load memories on mount
     useEffect(() => {
@@ -43,7 +36,6 @@ export function ChillView({ onExit }: ChillViewProps) {
             const shuffled = visualMemories.sort(() => Math.random() - 0.5);
 
             setMemories(shuffled);
-            setTotalMemories(allMemories.length);
             setViewState(shuffled.length > 0 ? "playing" : "empty");
         } catch (e) {
             console.error("Failed to load Chill memories:", e);
@@ -53,7 +45,7 @@ export function ChillView({ onExit }: ChillViewProps) {
 
     // Auto-advance timer
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: ReturnType<typeof setTimeout>;
 
         if (viewState === "playing" && autoPlay && memories.length > 0) {
             const currentMemory = memories[currentIndex];
@@ -104,7 +96,7 @@ export function ChillView({ onExit }: ChillViewProps) {
     // Prefer local path, fallback to remote
     const mediaSrc = currentMemory.media_path
         ? `asset://${currentMemory.media_path}`
-        : currentMemory.download_url;
+        : currentMemory.download_url ?? undefined;
 
     return (
         <div
@@ -136,7 +128,7 @@ export function ChillView({ onExit }: ChillViewProps) {
                                 className="max-h-[85vh] max-w-full rounded-2xl shadow-2xl"
                                 autoPlay={viewState === "playing"}
                                 loop
-                                muted={false} // Maybe mute by default? Let's leave sound on for immersion
+                                muted={false}
                                 playsInline
                             />
                         ) : (

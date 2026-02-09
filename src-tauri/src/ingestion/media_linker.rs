@@ -120,6 +120,11 @@ impl MediaLinker {
             id_matched, no_ids, id_not_found, already_linked);
     }
 
+    #[cfg(test)]
+    pub(crate) fn get_id_map(&self) -> &HashMap<String, PathBuf> {
+        &self.id_map
+    }
+
     /// Extract media_ids array from event metadata JSON string.
     /// Metadata format: {"media_ids": ["id1", "id2"], ...}
     fn extract_media_ids(metadata: &Option<String>) -> Vec<String> {
@@ -139,5 +144,104 @@ impl MediaLinker {
                 .collect(),
             None => Vec::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use std::fs::File;
+    use std::io::Write;
+
+    fn make_event(event_type: &str, metadata: Option<String>, media_refs: Vec<PathBuf>) -> Event {
+        Event {
+            id: "test-id".to_string(),
+            timestamp: Utc::now(),
+            sender: "test-user".to_string(),
+            sender_name: None,
+            media_references: media_refs,
+            conversation_id: Some("conv-1".to_string()),
+            content: None,
+            event_type: event_type.to_string(),
+            metadata,
+        }
+    }
+
+    #[test]
+    fn test_extract_media_ids_with_ids() {
+        let meta = Some(r#"{"media_ids": ["abc", "def"]}"#.to_string());
+        let ids = MediaLinker::extract_media_ids(&meta);
+        assert_eq!(ids, vec!["abc", "def"]);
+    }
+
+    #[test]
+    fn test_extract_media_ids_none() {
+        let ids = MediaLinker::extract_media_ids(&None);
+        assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn test_extract_media_ids_invalid_json() {
+        let meta = Some("not valid json".to_string());
+        let ids = MediaLinker::extract_media_ids(&meta);
+        assert!(ids.is_empty());
+
+        let meta2 = Some("{}".to_string());
+        let ids2 = MediaLinker::extract_media_ids(&meta2);
+        assert!(ids2.is_empty());
+    }
+
+    #[test]
+    fn test_extract_media_ids_no_array() {
+        let meta = Some(r#"{"media_ids": "not-an-array"}"#.to_string());
+        let ids = MediaLinker::extract_media_ids(&meta);
+        assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn test_id_extraction_from_filenames() {
+        let dir = tempfile::tempdir().unwrap();
+        File::create(dir.path().join("2023-01-01_TESTID123.jpg")).unwrap();
+        File::create(dir.path().join("2023-06-15_ID-WITH-DASHES.png")).unwrap();
+        File::create(dir.path().join("nounderscorefile.jpg")).unwrap();
+
+        let linker = MediaLinker::new(dir.path());
+        let map = linker.get_id_map();
+
+        assert!(map.contains_key("TESTID123"));
+        assert!(map.contains_key("ID-WITH-DASHES"));
+        // "nounderscorefile.jpg" has no underscore, so no ID extracted
+        assert!(!map.contains_key("nounderscorefile"));
+        assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn test_link_media_by_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let media_file = dir.path().join("2023-01-01_ABC123.jpg");
+        File::create(&media_file).unwrap().write_all(b"fake").unwrap();
+
+        let mut linker = MediaLinker::new(dir.path());
+        let meta = r#"{"media_ids": ["ABC123"]}"#.to_string();
+        let mut events = vec![make_event("MEDIA", Some(meta), vec![])];
+
+        linker.link_media(&mut events);
+        assert_eq!(events[0].media_references.len(), 1);
+        assert!(events[0].media_references[0].exists());
+    }
+
+    #[test]
+    fn test_link_skips_non_media_events() {
+        let dir = tempfile::tempdir().unwrap();
+        let media_file = dir.path().join("2023-01-01_ABC123.jpg");
+        File::create(&media_file).unwrap().write_all(b"fake").unwrap();
+
+        let mut linker = MediaLinker::new(dir.path());
+        let meta = r#"{"media_ids": ["ABC123"]}"#.to_string();
+        let mut events = vec![make_event("TEXT", Some(meta), vec![])];
+
+        linker.link_media(&mut events);
+        assert!(events[0].media_references.is_empty());
     }
 }

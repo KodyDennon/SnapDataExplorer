@@ -55,6 +55,9 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      - name: Frontend tests
+        run: npm test
+
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test
@@ -62,6 +65,11 @@ jobs:
       - name: Rust clippy
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
+
+      - name: Cargo audit
+        working-directory: src-tauri
+        run: cargo install cargo-audit --quiet && cargo audit
+        continue-on-error: true
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
