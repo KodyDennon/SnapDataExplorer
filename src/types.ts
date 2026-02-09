@@ -119,3 +119,17 @@ export interface MessagePage {
   total_count: number;
   has_more: boolean;
 }
+
+export interface MediaStreamEntry {
+  id: string;
+  path: string;
+  media_type: string;
+  timestamp: string;
+  source: "local" | "cloud";
+}
+
+export interface PaginatedMedia {
+  items: MediaStreamEntry[];
+  total_count: number;
+  has_more: boolean;
+}

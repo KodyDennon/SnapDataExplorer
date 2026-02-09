@@ -1,7 +1,7 @@
 use crate::error::AppResult;
 use crate::models::{
-    Conversation, Event, ExportSet, ExportSourceType, ExportStats, MediaEntry, Memory, MessagePage, Person,
-    SearchResult, ValidationReport, ValidationStatus,
+    Conversation, Event, ExportSet, ExportSourceType, ExportStats, MediaEntry, MediaStreamEntry, Memory, MessagePage,
+    PaginatedMedia, Person, SearchResult, ValidationReport, ValidationStatus,
 };
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
@@ -738,12 +738,75 @@ impl DatabaseManager {
         Ok(entries[start..end].to_vec())
     }
 
+    pub fn get_unified_media_stream(&self, limit: i32, offset: i32) -> AppResult<PaginatedMedia> {
+        let limit = limit.clamp(1, 1000);
+        let offset = offset.max(0);
+        let conn = self.conn();
+
+        // 1. Get total count for pagination info
+        let total_count: i32 = conn.query_row(
+            r#"SELECT (
+                SELECT COUNT(*) FROM events 
+                WHERE media_references IS NOT NULL AND media_references != '[]' 
+                AND event_type IN ('MEDIA', 'SNAP', 'SNAP_VIDEO', 'NOTE', 'STICKER')
+            ) + (
+                SELECT COUNT(*) FROM memories WHERE media_path IS NOT NULL
+            )"#,
+            [],
+            |r| r.get(0),
+        )?;
+
+        // 2. Optimized UNION query
+        let mut stmt = conn.prepare(
+            r#"SELECT id, json_extract(media_references, '$[0]') as path, event_type as media_type, timestamp, 'local' as source
+             FROM events
+             WHERE media_references IS NOT NULL AND media_references != '[]'
+             AND event_type IN ('MEDIA', 'SNAP', 'SNAP_VIDEO', 'NOTE', 'STICKER')
+             UNION ALL
+             SELECT id, media_path as path, media_type, timestamp, 'cloud' as source
+             FROM memories
+             WHERE media_path IS NOT NULL
+             ORDER BY timestamp DESC
+             LIMIT ?1 OFFSET ?2"#
+        )?;
+
+        let entries = stmt
+            .query_map(params![limit, offset], |row| {
+                let timestamp_str: String = row.get(3)?;
+                let timestamp = DateTime::parse_from_rfc3339(&timestamp_str)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(|_| Utc::now());
+
+                let media_type_raw: String = row.get(2)?;
+                let media_type = if media_type_raw.contains("VIDEO") || media_type_raw == "Video" {
+                    "Video".to_string()
+                } else {
+                    "Image".to_string()
+                };
+
+                Ok(MediaStreamEntry {
+                    id: row.get(0)?,
+                    path: PathBuf::from(row.get::<_, String>(1)?),
+                    media_type,
+                    timestamp,
+                    source: row.get(4)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
+
+        Ok(PaginatedMedia {
+            items: entries,
+            total_count,
+            has_more: (offset + limit) < total_count,
+        })
+    }
+
     pub fn get_message_index_at_date(&self, conversation_id: &str, date: &str) -> AppResult<i32> {
         // date is expected as "YYYY-MM-DD"
         let target = format!("{}T00:00:00+00:00", date);
         let index: i32 = self.conn().query_row(
-            "SELECT COUNT(*) FROM events
-             WHERE conversation_id = ?1 AND timestamp < ?2",
+            r#"SELECT COUNT(*) FROM events
+             WHERE conversation_id = ?1 AND timestamp < ?2"#,
             params![conversation_id, target],
             |r| r.get(0),
         )?;
@@ -753,9 +816,9 @@ impl DatabaseManager {
     pub fn get_activity_dates(&self, conversation_id: &str) -> AppResult<Vec<String>> {
         let conn = self.conn();
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT substr(timestamp, 1, 10) as dt FROM events
+            r#"SELECT DISTINCT substr(timestamp, 1, 10) as dt FROM events
              WHERE conversation_id = ?1
-             ORDER BY dt ASC",
+             ORDER BY dt ASC"#,
         )?;
         let dates = stmt
             .query_map([conversation_id], |row| row.get(0))?
@@ -771,7 +834,7 @@ impl DatabaseManager {
                 r.get(0)
             })?;
         let media_found: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM events WHERE event_type = 'MEDIA' AND media_references != '[]' AND media_references IS NOT NULL",
+            r#"SELECT COUNT(*) FROM events WHERE event_type = 'MEDIA' AND media_references != '[]' AND media_references IS NOT NULL"#,
             [], |r| r.get(0)
         )?;
         let media_missing = total_media_referenced - media_found;

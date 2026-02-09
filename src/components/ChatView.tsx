@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import { Event as Message, MessagePage, Conversation } from "../types";
@@ -26,6 +26,247 @@ interface ChatViewProps {
 
 const PAGE_SIZE = 500;
 
+// Optimized Memoized Message Component
+const MessageItem = React.memo(({
+  msg,
+  isSameSender,
+  showDateSep,
+  onOpenMedia,
+  markFailed,
+  failedMedia,
+  addToast
+}: {
+  msg: Message,
+  isSameSender: boolean,
+  showDateSep: boolean,
+  onOpenMedia: (ref: string) => void,
+  markFailed: (key: string) => void,
+  failedMedia: Set<string>,
+  addToast: any
+}) => {
+  function getMediaSrc(path: string): string {
+    try {
+      return convertFileSrc(path);
+    } catch {
+      return path;
+    }
+  }
+
+  function isImageFile(path: string): boolean {
+    const ext = path.split(".").pop()?.toLowerCase() || "";
+    return ["jpg", "jpeg", "png", "webp", "heif", "gif"].includes(ext);
+  }
+
+  return (
+    <div className="px-8" style={{ contain: "layout style paint" }}>
+      {showDateSep && (
+        <div className="flex items-center gap-4 my-8">
+          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+            {new Date(msg.timestamp).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          </span>
+          <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+        </div>
+      )}
+
+      <div className={cn("flex flex-col", isSameSender && !showDateSep ? "mt-1" : "mt-6")}>
+        {(!isSameSender || showDateSep) && (
+          <div className="flex items-center gap-3 mb-2 px-1">
+            <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+              {msg.sender_name || msg.sender}
+            </span>
+            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+              {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm max-w-2xl transition-all hover:shadow-md group/msg relative",
+            !isSameSender || showDateSep ? "rounded-2xl rounded-tl-none" : "rounded-2xl"
+          )}
+        >
+          {msg.event_type === "TEXT" && (
+            <div className="relative group">
+              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10">{msg.content}</p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(msg.content || "");
+                  addToast("info", "Copied to clipboard");
+                }}
+                className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <FileText className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {(msg.event_type === "MEDIA" || msg.event_type === "NOTE") && (
+            <div className="space-y-3">
+              {msg.media_references.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {msg.media_references.map((ref_, i) => {
+                    const mediaKey = `${msg.id}-${i}`;
+                    if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => onOpenMedia(ref_)}
+                        className="relative rounded-2xl overflow-hidden cursor-pointer group/media bg-slate-100 dark:bg-slate-800 aspect-square sm:aspect-auto"
+                      >
+                        {isImageFile(ref_) ? (
+                          <img
+                            src={getMediaSrc(ref_)}
+                            alt="Media"
+                            className="max-w-full max-h-80 rounded-xl object-contain group-hover/media:scale-105 transition-transform duration-500"
+                            loading="lazy"
+                            onError={() => markFailed(mediaKey)}
+                          />
+                        ) : (
+                          <div className="relative">
+                            <video
+                              src={getMediaSrc(ref_)}
+                              className="max-w-full max-h-80 rounded-xl bg-black"
+                              preload="metadata"
+                              onError={() => markFailed(mediaKey)}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/media:bg-black/40 transition-colors">
+                              <Play className="w-10 h-10 text-white fill-current" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity" />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center border border-slate-200 dark:border-slate-800">
+                  <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Media not linked</span>
+                </div>
+              )}
+              {msg.content && (
+                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium border-l-2 border-purple-500 pl-3 py-1">{msg.content}</p>
+              )}
+            </div>
+          )}
+
+          {(msg.event_type === "SNAP" || msg.event_type === "SNAP_VIDEO") && (
+            msg.media_references.length > 0 ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2">
+                  {msg.media_references.map((ref_, i) => {
+                    const mediaKey = `${msg.id}-snap-${i}`;
+                    if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => onOpenMedia(ref_)}
+                        className="relative rounded-2xl overflow-hidden cursor-pointer group/snap bg-slate-100 dark:bg-slate-800"
+                      >
+                        {isImageFile(ref_) ? (
+                          <img
+                            src={getMediaSrc(ref_)}
+                            alt="Snap"
+                            className="max-w-full max-h-96 rounded-2xl object-contain group-hover/snap:scale-105 transition-transform duration-500"
+                            loading="lazy"
+                            onError={() => markFailed(mediaKey)}
+                          />
+                        ) : (
+                          <div className="relative">
+                            <video
+                              src={getMediaSrc(ref_)}
+                              preload="metadata"
+                              className="max-w-full max-h-96 rounded-2xl bg-black"
+                              onError={() => markFailed(mediaKey)}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/snap:bg-black/40 transition-colors">
+                              <Smartphone className="w-10 h-10 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-yellow-400 text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-xl">
+                          <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                          {msg.event_type === "SNAP_VIDEO" ? "Video Snap" : "Snap"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 py-2">
+                <div className="w-12 h-12 bg-yellow-400/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-400/20">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{msg.content || "Snap"}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Content expired</p>
+                </div>
+              </div>
+            )
+          )}
+
+          {msg.event_type === "MISSED_VIDEO_CHAT" && (
+            <div className="flex items-center gap-3 text-red-500 py-1 px-1">
+              <PhoneMissed className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Missed Video Chat</span>
+            </div>
+          )}
+
+          {msg.event_type === "MISSED_AUDIO_CHAT" && (
+            <div className="flex items-center gap-3 text-red-500 py-1 px-1">
+              <PhoneMissed className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Missed Audio Chat</span>
+            </div>
+          )}
+
+          {msg.event_type === "STICKER" && (
+            msg.media_references.length > 0 ? (
+              <div className="p-2">
+                {msg.media_references.map((ref_, i) => {
+                  const mediaKey = `${msg.id}-sticker-${i}`;
+                  if (failedMedia.has(mediaKey)) return null;
+                  return (
+                    <img
+                      key={i}
+                      src={getMediaSrc(ref_)}
+                      alt="Sticker"
+                      className="max-w-[140px] max-h-[140px] drop-shadow-xl hover:scale-110 transition-transform duration-300"
+                      loading="lazy"
+                      onError={() => markFailed(mediaKey)}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 py-1 text-slate-400 font-bold">
+                <ImageIcon className="w-5 h-5 opacity-50" />
+                <span className="text-xs uppercase tracking-widest">Sticker</span>
+              </div>
+            )
+          )}
+
+          {msg.event_type === "SHARE" && (
+            <div className="flex items-center gap-4 py-1">
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
+                <Play className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{msg.content || "Shared content"}</p>
+            </div>
+          )}
+
+          {["STATUSPARTICIPANTREMOVED", "STATUSPARTICIPANTADDED", "STATUSCONVERSATIONNAMECHANGED"].includes(msg.event_type) && (
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center py-2">{msg.content || msg.event_type}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -42,20 +283,20 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const offsetRef = useRef(0);
 
-  // Derive all media items for the viewer
+  // Derive all media items for the viewer - memoized and optimized
   const chatMediaItems = useMemo(() => {
     const items: any[] = [];
-    messages.forEach(msg => {
+    for (const msg of messages) {
       if (["MEDIA", "NOTE", "SNAP", "SNAP_VIDEO"].includes(msg.event_type)) {
-        msg.media_references.forEach(ref => {
+        for (const ref of msg.media_references) {
           items.push({
             ...msg,
             path: ref,
             media_type: msg.event_type.includes("VIDEO") ? "Video" : "Image"
           });
-        });
+        }
       }
-    });
+    }
     return items;
   }, [messages]);
 
@@ -165,248 +406,16 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
     }
   }
 
-  function markFailed(key: string) {
+  const markFailed = useCallback((key: string) => {
     setFailedMedia(prev => { const next = new Set(prev); next.add(key); return next; });
-  }
+  }, []);
 
-  function getMediaSrc(path: string): string {
-    try {
-      return convertFileSrc(path);
-    } catch {
-      return path;
-    }
-  }
-
-  function isImageFile(path: string): boolean {
-    const ext = path.split(".").pop()?.toLowerCase() || "";
-    return ["jpg", "jpeg", "png", "webp", "heif", "gif"].includes(ext);
-  }
+  const openAtRef = useCallback((ref: string, msgId: string) => {
+    const itemIdx = chatMediaItems.findIndex(item => item.path === ref && item.id === msgId);
+    if (itemIdx >= 0) setViewerIndex(itemIdx);
+  }, [chatMediaItems]);
 
   const headerName = displayName || conversationId;
-
-  function renderMessage(index: number) {
-    const msg = messages[index];
-    if (!msg) return null;
-    const isSameSender = index > 0 && messages[index - 1].sender === msg.sender;
-
-    const showDateSep = index === 0 || (
-      new Date(messages[index - 1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString()
-    );
-
-    const openAtRef = (ref: string) => {
-      const itemIdx = chatMediaItems.findIndex(item => item.path === ref && item.id === msg.id);
-      if (itemIdx >= 0) setViewerIndex(itemIdx);
-    };
-
-    return (
-      <div className="px-8">
-        {showDateSep && (
-          <div className="flex items-center gap-4 my-8">
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-              {new Date(msg.timestamp).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </span>
-            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-          </div>
-        )}
-
-        <div className={cn("flex flex-col", isSameSender && !showDateSep ? "mt-1" : "mt-6")}>
-          {(!isSameSender || showDateSep) && (
-            <div className="flex items-center gap-3 mb-2 px-1">
-              <span className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                {msg.sender_name || msg.sender}
-              </span>
-              <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </div>
-          )}
-
-          <div
-            className={cn(
-              "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm max-w-2xl transition-all hover:shadow-md group/msg relative",
-              !isSameSender || showDateSep ? "rounded-2xl rounded-tl-none" : "rounded-2xl"
-            )}
-          >
-            {msg.event_type === "TEXT" && (
-              <div className="relative group">
-                <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10">{msg.content}</p>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(msg.content || "");
-                    addToast("info", "Copied to clipboard");
-                  }}
-                  className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  <FileText className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            {(msg.event_type === "MEDIA" || msg.event_type === "NOTE") && (
-              <div className="space-y-3">
-                {msg.media_references.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {msg.media_references.map((ref_, i) => {
-                      const mediaKey = `${msg.id}-${i}`;
-                      if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
-                      return (
-                        <div
-                          key={i}
-                          onClick={() => openAtRef(ref_)}
-                          className="relative rounded-2xl overflow-hidden cursor-pointer group/media bg-slate-100 dark:bg-slate-800 aspect-square sm:aspect-auto"
-                        >
-                          {isImageFile(ref_) ? (
-                            <img
-                              src={getMediaSrc(ref_)}
-                              alt="Media"
-                              className="max-w-full max-h-80 rounded-xl object-contain group-hover/media:scale-105 transition-transform duration-500"
-                              loading="lazy"
-                              onError={() => markFailed(mediaKey)}
-                            />
-                          ) : (
-                            <div className="relative">
-                              <video
-                                src={getMediaSrc(ref_)}
-                                className="max-w-full max-h-80 rounded-xl bg-black"
-                                preload="metadata"
-                                onError={() => markFailed(mediaKey)}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/media:bg-black/40 transition-colors">
-                                <Play className="w-10 h-10 text-white fill-current" />
-                              </div>
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center border border-slate-200 dark:border-slate-800">
-                    <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Media not linked</span>
-                  </div>
-                )}
-                {msg.content && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium border-l-2 border-purple-500 pl-3 py-1">{msg.content}</p>
-                )}
-              </div>
-            )}
-
-            {(msg.event_type === "SNAP" || msg.event_type === "SNAP_VIDEO") && (
-              msg.media_references.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 gap-2">
-                    {msg.media_references.map((ref_, i) => {
-                      const mediaKey = `${msg.id}-snap-${i}`;
-                      if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
-                      return (
-                        <div
-                          key={i}
-                          onClick={() => openAtRef(ref_)}
-                          className="relative rounded-2xl overflow-hidden cursor-pointer group/snap bg-slate-100 dark:bg-slate-800"
-                        >
-                          {isImageFile(ref_) ? (
-                            <img
-                              src={getMediaSrc(ref_)}
-                              alt="Snap"
-                              className="max-w-full max-h-96 rounded-2xl object-contain group-hover/snap:scale-105 transition-transform duration-500"
-                              loading="lazy"
-                              onError={() => markFailed(mediaKey)}
-                            />
-                          ) : (
-                            <div className="relative">
-                              <video
-                                src={getMediaSrc(ref_)}
-                                preload="metadata"
-                                className="max-w-full max-h-96 rounded-2xl bg-black"
-                                onError={() => markFailed(mediaKey)}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/snap:bg-black/40 transition-colors">
-                                <Smartphone className="w-10 h-10 text-white" />
-                              </div>
-                            </div>
-                          )}
-                          <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-yellow-400 text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-xl">
-                            <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-                            {msg.event_type === "SNAP_VIDEO" ? "Video Snap" : "Snap"}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4 py-2">
-                  <div className="w-12 h-12 bg-yellow-400/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-400/20">
-                    <Smartphone className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{msg.content || "Snap"}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Content expired</p>
-                  </div>
-                </div>
-              )
-            )}
-
-            {msg.event_type === "MISSED_VIDEO_CHAT" && (
-              <div className="flex items-center gap-3 text-red-500 py-1 px-1">
-                <PhoneMissed className="w-5 h-5" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Missed Video Chat</span>
-              </div>
-            )}
-
-            {msg.event_type === "MISSED_AUDIO_CHAT" && (
-              <div className="flex items-center gap-3 text-red-500 py-1 px-1">
-                <PhoneMissed className="w-5 h-5" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Missed Audio Chat</span>
-              </div>
-            )}
-
-            {msg.event_type === "STICKER" && (
-              msg.media_references.length > 0 ? (
-                <div className="p-2">
-                  {msg.media_references.map((ref_, i) => {
-                    const mediaKey = `${msg.id}-sticker-${i}`;
-                    if (failedMedia.has(mediaKey)) return null;
-                    return (
-                      <img
-                        key={i}
-                        src={getMediaSrc(ref_)}
-                        alt="Sticker"
-                        className="max-w-[140px] max-h-[140px] drop-shadow-xl hover:scale-110 transition-transform duration-300"
-                        loading="lazy"
-                        onError={() => markFailed(mediaKey)}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 py-1 text-slate-400 font-bold">
-                  <ImageIcon className="w-5 h-5 opacity-50" />
-                  <span className="text-xs uppercase tracking-widest">Sticker</span>
-                </div>
-              )
-            )}
-
-            {msg.event_type === "SHARE" && (
-              <div className="flex items-center gap-4 py-1">
-                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
-                  <Play className="w-5 h-5" />
-                </div>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{msg.content || "Shared content"}</p>
-              </div>
-            )}
-
-            {["STATUSPARTICIPANTREMOVED", "STATUSPARTICIPANTADDED", "STATUSCONVERSATIONNAMECHANGED"].includes(msg.event_type) && (
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center py-2">{msg.content || msg.event_type}</p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col bg-[#F7F8FA] dark:bg-slate-950 h-full relative overflow-hidden">
@@ -487,12 +496,30 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
       ) : (
         <Virtuoso
           ref={virtuosoRef}
-          style={{ height: "100%" }}
+          style={{ height: "100%", width: "100%" }}
           totalCount={messages.length}
-          itemContent={renderMessage}
+          itemContent={(index) => {
+            const msg = messages[index];
+            if (!msg) return null;
+            const isSameSender = index > 0 && messages[index - 1].sender === msg.sender;
+            const showDateSep = index === 0 || (
+              new Date(messages[index - 1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString()
+            );
+            return (
+              <MessageItem
+                msg={msg}
+                isSameSender={isSameSender}
+                showDateSep={showDateSep}
+                onOpenMedia={(ref) => openAtRef(ref, msg.id)}
+                markFailed={markFailed}
+                failedMedia={failedMedia}
+                addToast={addToast}
+              />
+            );
+          }}
           endReached={loadMore}
           followOutput="auto"
-          overscan={200}
+          overscan={300}
         />
       )}
 

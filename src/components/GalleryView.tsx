@@ -1,19 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { VirtuosoGrid } from "react-virtuoso";
-import { MediaEntry } from "../types";
+import { MediaStreamEntry, PaginatedMedia } from "../types";
 import { cn } from "../lib/utils";
 import { MediaThumbnail } from "./ui/MediaThumbnail";
 import { MediaViewer } from "./ui/MediaViewer";
 import { Image as ImageIcon } from "lucide-react";
 
-const PAGE_SIZE = 200;
-
 export function GalleryView() {
-  const [media, setMedia] = useState<MediaEntry[]>([]);
+  const [media, setMedia] = useState<MediaStreamEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [filter, setFilter] = useState<"all" | "Image" | "Video">("all");
   const offsetRef = useRef(0);
@@ -26,17 +25,18 @@ export function GalleryView() {
       setLoadingMore(true);
     }
     try {
-      const data = await invoke<MediaEntry[]>("get_all_media", {
-        limit: PAGE_SIZE,
+      const data = await invoke<PaginatedMedia>("get_unified_media_stream", {
+        limit: 100,
         offset: offsetRef.current,
       });
       if (append) {
-        setMedia(prev => [...prev, ...data]);
+        setMedia(prev => [...prev, ...data.items]);
       } else {
-        setMedia(data);
+        setMedia(data.items);
       }
-      offsetRef.current += data.length;
-      setHasMore(data.length === PAGE_SIZE);
+      setTotalCount(data.total_count);
+      setHasMore(data.has_more);
+      offsetRef.current += data.items.length;
     } catch (e) {
       console.error("Failed to load media:", e);
     } finally {
@@ -55,7 +55,9 @@ export function GalleryView() {
     }
   }, [loadingMore, hasMore, loadMedia]);
 
-  const filtered = filter === "all" ? media : media.filter(m => m.media_type === filter);
+  const filtered = useMemo(() =>
+    filter === "all" ? media : media.filter(m => m.media_type === filter)
+    , [media, filter]);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950/20 backdrop-blur-sm h-full overflow-hidden">
@@ -67,7 +69,7 @@ export function GalleryView() {
             Gallery
           </h1>
           <p className="text-sm text-white/40 font-medium mt-1">
-            {filtered.length.toLocaleString()} items{hasMore ? "+" : ""} discovered in local export
+            {totalCount.toLocaleString()} items total • {filtered.length.toLocaleString()} visible
           </p>
         </div>
         <div className="flex gap-1.5 bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md">
@@ -110,7 +112,7 @@ export function GalleryView() {
           <VirtuosoGrid
             style={{ height: "100%" }}
             totalCount={filtered.length}
-            overscan={200}
+            overscan={400}
             listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 pb-10"
             endReached={loadMore}
             itemContent={(index) => {
@@ -141,7 +143,7 @@ export function GalleryView() {
       <MediaViewer
         isOpen={viewerIndex >= 0}
         onClose={() => setViewerIndex(-1)}
-        items={filtered}
+        items={filtered.map(f => ({ ...f, media_path: f.path, media_type: f.media_type as any })) as any}
         currentIndex={viewerIndex}
         onIndexChange={setViewerIndex}
       />

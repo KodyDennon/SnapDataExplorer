@@ -18,10 +18,11 @@ use crate::ingestion::extractor::ZipExtractor;
 use crate::ingestion::media_linker::MediaLinker;
 use crate::ingestion::parser::{ChatJsonParser, ChatParser, MemoryParser, PersonParser, SnapHistoryParser};
 use crate::models::{
-    Conversation, Event, ExportSet, ExportSourceType, ExportStats, IngestionProgress, IngestionResult, MediaEntry,
-    Memory, MessagePage, SearchResult, ValidationReport,
+    Conversation, Event, ExportSet, ExportSourceType, ExportStats, IngestionProgress, IngestionResult,
+    MediaStreamEntry, Memory, MessagePage, PaginatedMedia, SearchResult, ValidationReport,
 };
 use crate::storage::{DiskSpaceInfo, StorageManager};
+use rayon::prelude::*;
 use simplelog::{ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger};
 use std::collections::HashMap;
 use std::fs;
@@ -175,46 +176,38 @@ async fn reconstruct_from_path(
         let total_files = entries.len();
         log::info!("Found {} files in chat_history directory", total_files);
 
-        for (idx, entry) in entries.into_iter().enumerate() {
-            let path = entry.path();
-            if path.is_file()
-                && path.extension().is_some_and(|ext| ext == "html")
-                && path
-                    .file_name()
-                    .is_some_and(|n| n.to_string_lossy().starts_with("subpage_"))
-            {
-                match ChatParser::parse_subpage(&path) {
-                    Ok((conv, events)) => {
-                        all_conversations.push(conv);
-                        all_events.extend(events);
-                    }
-                    Err(e) => {
-                        parse_failures += 1;
-                        log::error!("Failed to parse {:?}: {}", path.file_name(), e);
-                        warnings.push(format!(
-                            "Failed to parse {}: {}",
-                            path.file_name().unwrap_or_default().to_string_lossy(),
-                            e
-                        ));
-                    }
-                }
-            }
-
-            if idx % 10 == 0 {
-                let file_progress = if total_files > 0 {
-                    idx as f32 / total_files as f32
+        let results: Vec<_> = entries
+            .par_iter()
+            .filter_map(|entry| {
+                let path = entry.path();
+                if path.is_file()
+                    && path.extension().is_some_and(|ext| ext == "html")
+                    && path
+                        .file_name()
+                        .is_some_and(|n| n.to_string_lossy().starts_with("subpage_"))
+                {
+                    Some((path.clone(), ChatParser::parse_subpage(&path)))
                 } else {
-                    0.0
-                };
-                let _ = app_handle.emit(
-                    "ingestion-progress",
-                    IngestionProgress {
-                        export_id: export_id.clone(),
-                        current_step: "Parsing Chat HTML".to_string(),
-                        progress: 0.10 + (0.30 * file_progress),
-                        message: format!("Parsing conversation {} of {}...", idx + 1, total_files),
-                    },
-                );
+                    None
+                }
+            })
+            .collect();
+
+        for (path, res) in results {
+            match res {
+                Ok((conv, events)) => {
+                    all_conversations.push(conv);
+                    all_events.extend(events);
+                }
+                Err(e) => {
+                    parse_failures += 1;
+                    log::error!("Failed to parse {:?}: {}", path.file_name(), e);
+                    warnings.push(format!(
+                        "Failed to parse {}: {}",
+                        path.file_name().unwrap_or_default().to_string_lossy(),
+                        e
+                    ));
+                }
             }
         }
     } else {
@@ -574,14 +567,18 @@ async fn get_memories(export_id: Option<String>, app_handle: tauri::AppHandle) -
 }
 
 #[tauri::command]
-async fn get_all_media(
+async fn get_unified_media_stream(
     limit: Option<i32>,
     offset: Option<i32>,
     app_handle: tauri::AppHandle,
-) -> AppResult<Vec<MediaEntry>> {
+) -> AppResult<PaginatedMedia> {
     match db_for_app(&app_handle)? {
-        Some(db) => db.get_all_media(limit.unwrap_or(100), offset.unwrap_or(0)),
-        None => Ok(Vec::new()),
+        Some(db) => db.get_unified_media_stream(limit.unwrap_or(100), offset.unwrap_or(0)),
+        None => Ok(PaginatedMedia {
+            items: Vec::new(),
+            total_count: 0,
+            has_more: false,
+        }),
     }
 }
 
@@ -876,7 +873,7 @@ pub fn run() {
             get_exports,
             search_messages,
             get_memories,
-            get_all_media,
+            get_unified_media_stream,
             get_validation_report,
             get_message_index_at_date,
             get_activity_dates,

@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "framer-motion";
-import { Memory, MediaEntry } from "../types";
+import { PaginatedMedia, MediaStreamEntry } from "../types";
 import { cn } from "../lib/utils";
 import {
     X,
     Play,
-    Maximize2,
     LayoutGrid,
-    Zap,
     Wind,
     Layers,
     Calendar,
@@ -16,68 +14,60 @@ import {
     ArrowRight
 } from "lucide-react";
 import { MediaViewer } from "./ui/MediaViewer";
+import { VirtuosoGrid } from "react-virtuoso";
 
 // --- Types ---
 interface ChillGalleryProps {
     onExit: () => void;
 }
 
-interface UnifiedMedia {
-    id: string;
-    path: string;
-    type: string;
-    timestamp: string;
-    source: 'local' | 'cloud';
-    raw: Memory | MediaEntry;
-}
-
 export function ChillGallery({ onExit }: ChillGalleryProps) {
-    const [items, setItems] = useState<UnifiedMedia[]>([]);
+    const [items, setItems] = useState<MediaStreamEntry[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [viewerIndex, setViewerIndex] = useState(-1);
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const [hoveredItem, setHoveredItem] = useState<UnifiedMedia | null>(null);
+    const scrollRef = useRef<any>(null);
+    const [hoveredItem, setHoveredItem] = useState<MediaStreamEntry | null>(null);
+    const offsetRef = useRef(0);
 
-    // Load and unify media from local export and cloud memories
+    const loadInitial = async () => {
+        setLoading(true);
+        try {
+            const data = await invoke<PaginatedMedia>("get_unified_media_stream", { limit: 100, offset: 0 });
+            setItems(data.items);
+            setTotalCount(data.total_count);
+            setHasMore(data.has_more);
+            offsetRef.current = data.items.length;
+        } catch (err) {
+            console.error("Failed to load stream:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadMore = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        try {
+            const data = await invoke<PaginatedMedia>("get_unified_media_stream", {
+                limit: 100,
+                offset: offsetRef.current
+            });
+            setItems(prev => [...prev, ...data.items]);
+            setHasMore(data.has_more);
+            offsetRef.current += data.items.length;
+        } catch (err) {
+            console.error("Failed to load more:", err);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [loadingMore, hasMore]);
+
     useEffect(() => {
-        const fetchUnifiedMedia = async () => {
-            try {
-                const [allMemories, allLocal] = await Promise.all([
-                    invoke<Memory[]>("get_memories"),
-                    invoke<MediaEntry[]>("get_all_media", { limit: 1000, offset: 0 })
-                ]);
-
-                const unified: UnifiedMedia[] = [
-                    ...allMemories
-                        .filter(m => m.media_path && (m.media_type === "Image" || m.media_type === "Video"))
-                        .map(m => ({
-                            id: m.id,
-                            path: m.media_path!,
-                            type: m.media_type,
-                            timestamp: m.timestamp,
-                            source: 'cloud' as const,
-                            raw: m
-                        })),
-                    ...allLocal.map(l => ({
-                        id: l.path,
-                        path: l.path,
-                        type: l.media_type,
-                        timestamp: l.timestamp || new Date().toISOString(),
-                        source: 'local' as const,
-                        raw: l
-                    }))
-                ];
-
-                // Sort by timestamp descending
-                setItems(unified.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-            } catch (err) {
-                console.error("Unified Gallery failed:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUnifiedMedia();
+        loadInitial();
     }, []);
 
     // Ambient Auto-Scrolling
@@ -85,10 +75,10 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
         let animationFrame: number;
         const scroll = () => {
             if (isAutoScrolling && scrollRef.current) {
-                scrollRef.current.scrollTop += 0.4; // Very slow drift
-                if (scrollRef.current.scrollTop >= scrollRef.current.scrollHeight - scrollRef.current.clientHeight) {
-                    setIsAutoScrolling(false);
-                }
+                scrollRef.current.scrollTo({
+                    top: scrollRef.current.getScrollTop() + 0.4,
+                    behavior: 'auto'
+                });
             }
             animationFrame = requestAnimationFrame(scroll);
         };
@@ -123,8 +113,8 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
                     className="absolute inset-0 pointer-events-none z-0"
                 >
                     <div
-                        className="absolute inset-0 bg-cover bg-center blur-[140px] scale-150 transition-all duration-1000"
-                        style={{ backgroundImage: hoveredItem ? `url(asset://${hoveredItem.path})` : 'none' }}
+                        className="absolute inset-0 bg-cover bg-center blur-[140px] scale-150 transition-all duration-[2000ms]"
+                        style={{ backgroundImage: hoveredItem ? `url(${convertFileSrc(hoveredItem.path)})` : 'none' }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-tr from-zinc-950 via-transparent to-zinc-950/50" />
                 </motion.div>
@@ -174,31 +164,33 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
                 </motion.div>
             </div>
 
-            {/* Grid Container */}
-            <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto no-scrollbar pt-32 pb-32 px-6 md:px-12 z-10"
-            >
-                <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-6 relative">
-                    {items.map((item, i) => (
-                        <div key={item.id} className="mb-6 break-inside-avoid">
-                            <GalleryItem
-                                item={item}
-                                index={i}
-                                onClick={() => setViewerIndex(i)}
-                                onMouseEnter={() => setHoveredItem(item)}
-                                onMouseLeave={() => setHoveredItem(null)}
-                            />
-                        </div>
-                    ))}
-                </div>
+            {/* Virtualized Grid */}
+            <div className="flex-1 mt-24 mb-24 z-10 px-6 md:px-12">
+                <VirtuosoGrid
+                    ref={scrollRef}
+                    data={items}
+                    endReached={loadMore}
+                    overscan={400}
+                    style={{ height: "100%", width: "100%" }}
+                    listClassName="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6"
+                    itemContent={(index, item) => (
+                        <GalleryItem
+                            key={item.id}
+                            item={item}
+                            index={index}
+                            onClick={() => setViewerIndex(index)}
+                            onMouseEnter={() => setHoveredItem(item)}
+                            onMouseLeave={() => setHoveredItem(null)}
+                        />
+                    )}
+                />
             </div>
 
             {/* Master Media Viewer */}
             <MediaViewer
                 isOpen={viewerIndex >= 0}
                 onClose={() => setViewerIndex(-1)}
-                items={items.map(i => i.raw)}
+                items={items.map(i => ({ ...i, media_path: i.path, media_type: i.media_type as any })) as any}
                 currentIndex={viewerIndex}
                 onIndexChange={setViewerIndex}
             />
@@ -212,7 +204,7 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
                 >
                     <div className="flex items-center gap-3">
                         <LayoutGrid className="w-4 h-4 text-brand-500" />
-                        <span className="text-white text-xs font-bold tracking-tight">{items.length} Elements Discovered</span>
+                        <span className="text-white text-xs font-bold tracking-tight">{totalCount.toLocaleString()} Elements Discovered</span>
                     </div>
                     <div className="w-px h-4 bg-white/10" />
                     <div className="flex items-center gap-3 group cursor-help">
@@ -232,34 +224,40 @@ function GalleryItem({
     onMouseEnter,
     onMouseLeave
 }: {
-    item: UnifiedMedia,
+    item: MediaStreamEntry,
     index: number,
     onClick: () => void,
     onMouseEnter: () => void,
     onMouseLeave: () => void
 }) {
-    const src = `asset://${item.path}`;
+    const src = convertFileSrc(item.path);
+
+    // Optimized memoized styling
+    const itemStyle = React.useMemo(() => ({
+        contain: "layout style paint" as const,
+        willChange: "transform" as const,
+    }), []);
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: (index % 12) * 0.03 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: (index % 6) * 0.05 }}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             onClick={onClick}
-            className="group relative rounded-3xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 hover:border-brand-500/50 transition-all duration-700 shadow-xl hover:shadow-brand-500/20"
+            style={itemStyle}
+            className="group relative rounded-3xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 hover:border-brand-500/50 transition-all duration-700 shadow-xl hover:shadow-brand-500/20 aspect-[3/4]"
         >
             {/* Glow Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-40 group-hover:opacity-80 transition-opacity duration-700 z-10" />
 
             {/* Media */}
-            {item.type === "Video" ? (
-                <div className="w-full relative overflow-hidden">
+            {item.media_type === "Video" ? (
+                <div className="w-full h-full relative overflow-hidden">
                     <video
                         src={src}
-                        className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out"
                         muted
                         loop
                         onMouseOver={e => e.currentTarget.play()}
@@ -272,7 +270,7 @@ function GalleryItem({
             ) : (
                 <img
                     src={src}
-                    className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out"
                     alt=""
                     loading="lazy"
                 />
@@ -297,9 +295,9 @@ function GalleryItem({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className={cn("w-1.5 h-1.5 rounded-full", item.type === 'Video' ? 'bg-amber-400' : 'bg-blue-400')} />
+                        <div className={cn("w-1.5 h-1.5 rounded-full", item.media_type === 'Video' ? 'bg-amber-400' : 'bg-blue-400')} />
                         <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em]">
-                            {item.type} • {item.source === 'cloud' ? 'Downloaded' : 'Export File'}
+                            {item.media_type} • {item.source === 'cloud' ? 'Downloaded' : 'Export File'}
                         </p>
                     </div>
                 </div>
