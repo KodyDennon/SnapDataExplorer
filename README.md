@@ -30,6 +30,25 @@ Download the latest release for your platform from the [Releases](https://github
 | Windows | `.msi` installer |
 | Linux | `.deb` / `.AppImage` |
 
+### ⚡ Easy Install (macOS)
+
+If you are a standard user on macOS, you can use our helper script to set up everything for you (including bypassing "Damaged App" warnings):
+
+```bash
+# 1. Download the repo
+git clone https://github.com/KodyDennon/SnapDataExplorer.git
+cd SnapDataExplorer
+
+# 2. Run the easy setup
+./scripts/easy_setup_mac.sh
+```
+
+**Common Issues:**
+If your app says *"is damaged and can't be opened"*, run this fix:
+```bash
+./scripts/gatekeeper_fix.sh
+```
+
 ### Build from Source
 
 **Prerequisites:**

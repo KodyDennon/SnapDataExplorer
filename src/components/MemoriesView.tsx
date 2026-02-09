@@ -247,7 +247,7 @@ export const MemoriesView: React.FC = () => {
                 </div>
 
                 {/* Right: Gallery Grid */}
-                <div className="col-span-9 flex flex-col gap-6">
+                <div className="col-span-9 flex flex-col gap-6 h-full overflow-hidden">
 
                     {/* Toolbar */}
                     <div className="flex gap-4">

@@ -192,3 +192,22 @@ pub struct MessagePage {
     pub total_count: i32,
     pub has_more: bool,
 }
+
+/// A high-performance, lightweight DTO for gallery entries.
+/// Minimizes IPC overhead by only sending what the UI needs for grid rendering.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MediaStreamEntry {
+    pub id: String,
+    pub path: PathBuf,
+    pub media_type: String, // "Image" | "Video"
+    pub timestamp: DateTime<Utc>,
+    pub source: String, // "local" | "cloud"
+}
+
+/// A paginated result for the unified media stream.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PaginatedMedia {
+    pub items: Vec<MediaStreamEntry>,
+    pub total_count: i32,
+    pub has_more: bool,
+}

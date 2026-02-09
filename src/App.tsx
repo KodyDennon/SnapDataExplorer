@@ -7,6 +7,7 @@ import { SetupFlow } from "./components/SetupFlow";
 import { SearchView } from "./components/SearchView";
 import { GalleryView } from "./components/GalleryView";
 import { MemoriesView } from "./components/MemoriesView";
+import { ChillGallery } from "./components/ChillGallery";
 import { ToastContainer } from "./components/Toast";
 import { ExportSet, IngestionProgress, IngestionResult } from "./types";
 import { listen } from "@tauri-apps/api/event";
@@ -162,7 +163,8 @@ function App() {
       {/* Sidebar with responsive visibility */}
       <div className={cn(
         "transition-transform duration-300 ease-out fixed md:relative z-40 h-full",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        viewMode === "chill" && "hidden md:hidden"
       )}>
         <Sidebar
           onSelectExport={handleSelectExport}
@@ -189,35 +191,41 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
-        {activePage === "dashboard" && (
-          <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} />
-        )}
-
-        {activePage === "chats" && (
+        {viewMode === "chill" ? (
+          <ChillGallery onExit={() => setViewMode("pro")} />
+        ) : (
           <>
-            <ConversationList
-              onSelect={setSelectedConvo}
-              selectedId={selectedConvo}
-              refreshTrigger={refreshTrigger}
-            />
-            {selectedConvo ? (
-              <ChatView conversationId={selectedConvo} addToast={addToast} />
-            ) : (
-              <div className="flex-1 flex items-center justify-center bg-surface-50 dark:bg-surface-900 flex-col gap-4">
-                <span className="text-6xl animate-bounce text-surface-200 dark:text-surface-700">💬</span>
-                <p className="font-bold text-xl text-surface-400">Select a conversation</p>
-              </div>
+            {activePage === "dashboard" && (
+              <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} />
             )}
+
+            {activePage === "chats" && (
+              <>
+                <ConversationList
+                  onSelect={setSelectedConvo}
+                  selectedId={selectedConvo}
+                  refreshTrigger={refreshTrigger}
+                />
+                {selectedConvo ? (
+                  <ChatView conversationId={selectedConvo} addToast={addToast} />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center bg-surface-50 dark:bg-surface-900 flex-col gap-4">
+                    <span className="text-6xl animate-bounce text-surface-200 dark:text-surface-700">💬</span>
+                    <p className="font-bold text-xl text-surface-400">Select a conversation</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {activePage === "search" && (
+              <SearchView onNavigateToChat={handleNavigateToChat} addToast={addToast} />
+            )}
+
+            {activePage === "gallery" && <GalleryView />}
+
+            {activePage === "memories" && <MemoriesView />}
           </>
         )}
-
-        {activePage === "search" && (
-          <SearchView onNavigateToChat={handleNavigateToChat} addToast={addToast} />
-        )}
-
-        {activePage === "gallery" && <GalleryView />}
-
-        {activePage === "memories" && <MemoriesView />}
       </main>
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />

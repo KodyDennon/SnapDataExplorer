@@ -4,6 +4,7 @@ import { ExportSet, ExportStats, IngestionProgress, ValidationReport } from "../
 import { Card, Badge } from "./ui";
 import { cn } from "../lib/utils";
 import { ViewMode } from "./ui/ModeToggle";
+import { ChillView } from "./ChillView";
 
 interface DashboardProps {
   currentExport: ExportSet | null;
