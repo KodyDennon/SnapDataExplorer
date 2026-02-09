@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri",
-    "release": "./scripts/release.sh"
+    "release": "semantic-release --dry-run",
+    "release:manual": "./scripts/release-manual.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -32,6 +33,9 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -41,6 +45,7 @@
     "autoprefixer": "^10.4.23",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.6",
+    "semantic-release": "^25.0.3",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
