@@ -12,8 +12,9 @@ pub struct ChatParser;
 impl ChatParser {
     pub fn parse_subpage(path: &Path) -> AppResult<(Conversation, Vec<Event>)> {
         log::debug!("parse_subpage: parsing {:?}", path);
-        let html = fs::read_to_string(path)?;
-        let document = kuchikiki::parse_html().one(html);
+        
+        let mut file = fs::File::open(path)?;
+        let document = kuchikiki::parse_html().from_utf8().read_from(&mut file)?;
 
         let conversation_id = path
             .file_stem()

@@ -143,7 +143,7 @@ export function GalleryView() {
       <MediaViewer
         isOpen={viewerIndex >= 0}
         onClose={() => setViewerIndex(-1)}
-        items={filtered.map((f): MediaViewerItem => ({ ...f, media_path: f.path, media_type: f.media_type }))}
+        items={useMemo(() => filtered.map((f): MediaViewerItem => ({ ...f, media_path: f.path, media_type: f.media_type })), [filtered])}
         currentIndex={viewerIndex}
         onIndexChange={setViewerIndex}
       />

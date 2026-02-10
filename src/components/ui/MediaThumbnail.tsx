@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Image as ImageIcon, Cloud, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -33,7 +33,18 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
     const [hasError, setHasError] = useState(false);
     const isVideo = mediaType.toLowerCase() === 'video';
 
-    const src = path ? convertFileSrc(path) : remoteUrl;
+    // Memoize the source to prevent re-calculations
+    const src = useMemo(() => {
+        if (!path && !remoteUrl) return null;
+        if (path) {
+            try {
+                return convertFileSrc(path);
+            } catch {
+                return path;
+            }
+        }
+        return remoteUrl;
+    }, [path, remoteUrl]);
 
     const renderStatusIcon = () => {
         switch (status) {
@@ -68,7 +79,10 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
                         src={src}
                         className="w-full h-full object-cover"
                         onMouseOver={(e) => {
-                            if (status === 'Downloaded') e.currentTarget.play().catch(() => { });
+                            if (status === 'Downloaded') {
+                                e.currentTarget.preload = "auto";
+                                e.currentTarget.play().catch(() => { });
+                            }
                         }}
                         onMouseOut={(e) => {
                             e.currentTarget.pause();
@@ -77,6 +91,7 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
                         muted
                         loop
                         playsInline
+                        preload="none"
                         onError={() => setHasError(true)}
                     />
                 ) : (

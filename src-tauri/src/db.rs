@@ -4,34 +4,46 @@ use crate::models::{
     PaginatedMedia, Person, SearchResult, ValidationReport, ValidationStatus,
 };
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection};
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::params;
 use std::path::{Path, PathBuf};
 
-use std::sync::Mutex;
+pub type Pool = r2d2::Pool<SqliteConnectionManager>;
 
 pub struct DatabaseManager {
-    conn: Mutex<Connection>,
+    pool: Pool,
 }
 
 impl DatabaseManager {
     pub fn new(db_path: &Path) -> AppResult<Self> {
-        let conn = Connection::open(db_path)?;
-        conn.execute_batch(
-            "
-            PRAGMA journal_mode=WAL;
-            PRAGMA synchronous=NORMAL;
-            PRAGMA busy_timeout=5000;
-            PRAGMA foreign_keys=ON;
-        ",
-        )?;
-        let manager = Self { conn: Mutex::new(conn) };
+        let manager = SqliteConnectionManager::file(db_path)
+            .with_init(|conn| {
+                conn.execute_batch(
+                    "
+                    PRAGMA journal_mode=WAL;
+                    PRAGMA synchronous=NORMAL;
+                    PRAGMA busy_timeout=5000;
+                    PRAGMA foreign_keys=ON;
+                    PRAGMA cache_size=-64000; -- 64MB cache
+                    PRAGMA temp_store=MEMORY;
+                ",
+                )
+                .map_err(Into::into)
+            });
+
+        let pool = r2d2::Pool::builder()
+            .max_size(10) // Allow up to 10 concurrent connections
+            .build(manager)
+            .map_err(|e| crate::error::AppError::Generic(format!("Failed to create pool: {}", e)))?;
+
+        let manager = Self { pool };
         manager.initialize_schema()?;
         manager.run_migrations()?;
         Ok(manager)
     }
 
-    fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().expect("Database mutex poisoned")
+    fn conn(&self) -> r2d2::PooledConnection<SqliteConnectionManager> {
+        self.pool.get().expect("Database pool exhausted")
     }
 
     fn initialize_schema(&self) -> AppResult<()> {
@@ -90,10 +102,11 @@ impl DatabaseManager {
                 value TEXT NOT NULL
             );
 
+            -- High-performance Indices
             CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
             CREATE INDEX IF NOT EXISTS idx_events_export_id ON events(export_id);
-            CREATE INDEX IF NOT EXISTS idx_events_convo_id ON events(conversation_id);
-            CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
+            CREATE INDEX IF NOT EXISTS idx_events_convo_id_timestamp ON events(conversation_id, timestamp);
+            CREATE INDEX IF NOT EXISTS idx_events_type_timestamp ON events(event_type, timestamp);
             CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp);
             CREATE INDEX IF NOT EXISTS idx_memories_export_id ON memories(export_id);
 

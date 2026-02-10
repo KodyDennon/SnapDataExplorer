@@ -44,13 +44,16 @@ const MessageItem = React.memo(({
   failedMedia: Set<string>,
   addToast: (type: Toast["type"], message: string) => void
 }) => {
-  function getMediaSrc(path: string): string {
-    try {
-      return convertFileSrc(path);
-    } catch {
-      return path;
-    }
-  }
+  // Pre-compute media sources to avoid logic in render
+  const mediaSources = useMemo(() => {
+    return msg.media_references.map(ref => {
+      try {
+        return convertFileSrc(ref);
+      } catch {
+        return ref;
+      }
+    });
+  }, [msg.media_references]);
 
   function isImageFile(path: string): boolean {
     const ext = path.split(".").pop()?.toLowerCase() || "";
@@ -58,7 +61,7 @@ const MessageItem = React.memo(({
   }
 
   return (
-    <div className="px-8" style={{ contain: "layout style paint" }}>
+    <div className="px-8" style={{ contain: "content" }}>
       {showDateSep && (
         <div className="flex items-center gap-4 my-8">
           <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
@@ -108,6 +111,7 @@ const MessageItem = React.memo(({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {msg.media_references.map((ref_, i) => {
                     const mediaKey = `${msg.id}-${i}`;
+                    const src = mediaSources[i];
                     if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
                     return (
                       <div
@@ -117,7 +121,7 @@ const MessageItem = React.memo(({
                       >
                         {isImageFile(ref_) ? (
                           <img
-                            src={getMediaSrc(ref_)}
+                            src={src}
                             alt="Media"
                             className="max-w-full max-h-80 rounded-xl object-contain group-hover/media:scale-105 transition-transform duration-500"
                             loading="lazy"
@@ -126,9 +130,9 @@ const MessageItem = React.memo(({
                         ) : (
                           <div className="relative">
                             <video
-                              src={getMediaSrc(ref_)}
+                              src={src}
                               className="max-w-full max-h-80 rounded-xl bg-black"
-                              preload="metadata"
+                              preload="none"
                               onError={() => markFailed(mediaKey)}
                             />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/media:bg-black/40 transition-colors">
@@ -159,6 +163,7 @@ const MessageItem = React.memo(({
                 <div className="grid grid-cols-1 gap-2">
                   {msg.media_references.map((ref_, i) => {
                     const mediaKey = `${msg.id}-snap-${i}`;
+                    const src = mediaSources[i];
                     if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
                     return (
                       <div
@@ -168,7 +173,7 @@ const MessageItem = React.memo(({
                       >
                         {isImageFile(ref_) ? (
                           <img
-                            src={getMediaSrc(ref_)}
+                            src={src}
                             alt="Snap"
                             className="max-w-full max-h-96 rounded-2xl object-contain group-hover/snap:scale-105 transition-transform duration-500"
                             loading="lazy"
@@ -177,8 +182,8 @@ const MessageItem = React.memo(({
                         ) : (
                           <div className="relative">
                             <video
-                              src={getMediaSrc(ref_)}
-                              preload="metadata"
+                              src={src}
+                              preload="none"
                               className="max-w-full max-h-96 rounded-2xl bg-black"
                               onError={() => markFailed(mediaKey)}
                             />
@@ -226,13 +231,14 @@ const MessageItem = React.memo(({
           {msg.event_type === "STICKER" && (
             msg.media_references.length > 0 ? (
               <div className="p-2">
-                {msg.media_references.map((ref_, i) => {
+                {msg.media_references.map((_, i) => {
                   const mediaKey = `${msg.id}-sticker-${i}`;
+                  const src = mediaSources[i];
                   if (failedMedia.has(mediaKey)) return null;
                   return (
                     <img
                       key={i}
-                      src={getMediaSrc(ref_)}
+                      src={src}
                       alt="Sticker"
                       className="max-w-[140px] max-h-[140px] drop-shadow-xl hover:scale-110 transition-transform duration-300"
                       loading="lazy"
