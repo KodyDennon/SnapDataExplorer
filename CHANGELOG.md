@@ -1,3 +1,10 @@
+# [0.9.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.8.2...v0.9.0) (2026-02-10)
+
+
+### Features
+
+* implement professional crash reporting system and clean up test output ([00e7dfb](https://github.com/KodyDennon/SnapDataExplorer/commit/00e7dfb8e81270f2f301cf92e3882e00735d3628))
+
 ## [0.8.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.8.1...v0.8.2) (2026-02-10)
 
 
