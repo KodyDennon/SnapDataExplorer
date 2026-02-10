@@ -1,3 +1,10 @@
+# [0.12.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.11.0...v0.12.0) (2026-02-10)
+
+
+### Features
+
+* enhance macOS download buttons with architecture-specific options and auto-detection ([b890f74](https://github.com/KodyDennon/SnapDataExplorer/commit/b890f74d8dd7649177be0ea6c36113500eba9cf9))
+
 # [0.11.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.10.0...v0.11.0) (2026-02-10)
 
 
