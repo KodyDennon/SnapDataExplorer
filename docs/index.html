@@ -110,15 +110,15 @@
 
             <!-- Platform download buttons -->
             <div class="flex flex-wrap gap-3 justify-center mb-4">
-                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                <a id="btn-macos" href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-all">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                     macOS
                 </a>
-                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                <a id="btn-windows" href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-all">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
                     Windows
                 </a>
-                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                <a id="btn-linux" href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-all">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.015-.465.044C8.87.689 6.584 3.418 6.584 6.655c0 .134.008.268.022.4-.573.084-1.096.262-1.544.522-.896.519-1.554 1.366-1.823 2.394-.27 1.028-.166 2.11.29 3.05.456.939 1.217 1.658 2.145 2.024-.019.122-.03.246-.03.372 0 2.078 1.291 3.896 3.203 4.62-.05.218-.076.443-.076.672 0 1.73 1.41 3.14 3.14 3.14s3.14-1.41 3.14-3.14c0-.229-.026-.454-.076-.672 1.912-.724 3.203-2.542 3.203-4.62 0-.126-.011-.25-.03-.372.928-.366 1.69-1.085 2.145-2.024.456-.94.56-2.022.29-3.05-.269-1.028-.927-1.875-1.823-2.394-.448-.26-.971-.438-1.544-.522.014-.132.022-.266.022-.4 0-3.237-2.286-5.966-5.455-6.611A4.368 4.368 0 0012.504 0z"/></svg>
                     Linux
                 </a>
@@ -330,6 +330,54 @@
         const menu = document.getElementById('mobile-menu');
         btn.addEventListener('click', () => menu.classList.toggle('hidden'));
         menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => menu.classList.add('hidden')));
+
+        // Dynamic Download Links
+        async function setupDownloadLinks() {
+            try {
+                const response = await fetch('https://api.github.com/repos/KodyDennon/SnapDataExplorer/releases/latest');
+                const release = await response.json();
+                const assets = release.assets;
+
+                const platformMap = {
+                    'btn-macos': { ext: '.dmg', label: 'Apple-Silicon' },
+                    'btn-windows': { ext: '.msi', label: 'Windows' },
+                    'btn-linux': { ext: '.AppImage', label: 'Linux' }
+                };
+
+                for (const [id, config] of Object.entries(platformMap)) {
+                    const el = document.getElementById(id);
+                    const asset = assets.find(a => a.name.endsWith(config.ext) && a.name.includes(config.label));
+                    if (asset && el) {
+                        el.href = asset.browser_download_url;
+                        // Add a little version tag next to the platform if we want, or just update the link
+                        console.log(`Updated ${id} to ${asset.name}`);
+                    }
+                }
+
+                // Auto-highlight based on OS
+                const ua = navigator.userAgent.toLowerCase();
+                let targetId = '';
+                if (ua.includes('mac')) targetId = 'btn-macos';
+                else if (ua.includes('win')) targetId = 'btn-windows';
+                else if (ua.includes('linux')) targetId = 'btn-linux';
+
+                if (targetId) {
+                    const recommended = document.getElementById(targetId);
+                    if (recommended) {
+                        recommended.classList.add('ring-4', 'ring-brand/30', 'scale-105');
+                        const badge = document.createElement('span');
+                        badge.className = 'absolute -top-3 -right-3 bg-green-500 text-[10px] font-black px-2 py-1 rounded-lg shadow-xl uppercase tracking-tighter';
+                        badge.innerText = 'Recommended';
+                        recommended.classList.add('relative');
+                        recommended.appendChild(badge);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to fetch latest release assets:', e);
+            }
+        }
+
+        setupDownloadLinks();
     </script>
 
 </body>
