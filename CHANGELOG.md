@@ -1,3 +1,10 @@
+## [0.7.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.7.1...v0.7.2) (2026-02-10)
+
+
+### Bug Fixes
+
+* **ci:** add build retries and update tauri dependencies to resolve transient 502 errors ([bb3b364](https://github.com/KodyDennon/SnapDataExplorer/commit/bb3b364a37071bb0ee0e94ba41f72357d01e8231))
+
 ## [0.7.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.7.0...v0.7.1) (2026-02-10)
 
 
