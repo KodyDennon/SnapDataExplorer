@@ -1,3 +1,10 @@
+## [0.5.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.5.0...v0.5.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* **ci:** revert tauri-action to v0 ([05d9cf1](https://github.com/KodyDennon/SnapDataExplorer/commit/05d9cf1a0c5a1b12b42c31e99f7b8b41c1a0ea9e))
+
 # [0.5.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.4.0...v0.5.0) (2026-02-10)
 
 
