@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.5.1...v0.6.0) (2026-02-10)
+
+
+### Features
+
+* implement fully automated production-ready auto-updater ([a0dc419](https://github.com/KodyDennon/SnapDataExplorer/commit/a0dc41913dcad489cd63cb544ad3c093d41eeeb9))
+
 ## [0.5.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.5.0...v0.5.1) (2026-02-10)
 
 
