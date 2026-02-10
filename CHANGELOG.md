@@ -1,3 +1,15 @@
+# [0.5.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.4.0...v0.5.0) (2026-02-10)
+
+
+### Bug Fixes
+
+* **ci:** robust tag resolution and tauri-action v2 update ([b280fe9](https://github.com/KodyDennon/SnapDataExplorer/commit/b280fe91944406b01fe0ee794fcbf272533bbfc5))
+
+
+### Features
+
+* add AI development attribution and disclosure ([41fdb0e](https://github.com/KodyDennon/SnapDataExplorer/commit/41fdb0e0fd4c00b977040e7c92100cf159540196))
+
 # [0.4.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.3.3...v0.4.0) (2026-02-10)
 
 
