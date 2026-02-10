@@ -1,3 +1,10 @@
+# [0.4.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.3.3...v0.4.0) (2026-02-10)
+
+
+### Features
+
+* **ci:** rename release artifacts for better user-friendliness ([98be3f5](https://github.com/KodyDennon/SnapDataExplorer/commit/98be3f5ebbe617a2e929a7c83f45a7e69698d384))
+
 ## [0.3.3](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.3.2...v0.3.3) (2026-02-10)
 
 
