@@ -1,3 +1,10 @@
+## [0.9.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.9.0...v0.9.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* **ci:** robust latest.json generation with platform aliases and semantic versioning ([bf6be61](https://github.com/KodyDennon/SnapDataExplorer/commit/bf6be61bba91fcaaefa676356fddcc03100ba596))
+
 # [0.9.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.8.2...v0.9.0) (2026-02-10)
 
 
