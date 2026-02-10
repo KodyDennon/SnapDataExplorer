@@ -1,3 +1,10 @@
+# [0.8.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.7.2...v0.8.0) (2026-02-10)
+
+
+### Features
+
+* add About modal with manual update check system ([e0b6371](https://github.com/KodyDennon/SnapDataExplorer/commit/e0b63710bfaa77d8c554e5b31043dc7fcca4fea1))
+
 ## [0.7.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.7.1...v0.7.2) (2026-02-10)
 
 
