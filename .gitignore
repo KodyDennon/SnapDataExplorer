@@ -51,6 +51,11 @@ Desktop.ini
 src-tauri/target/
 src-tauri/gen/schemas
 
+# Tauri signing keys
+.tauri-signing-key
+.tauri-signing-key.pub
+GITHUB_SECRETS.md
+
 # Environment
 .env
 .env.*
