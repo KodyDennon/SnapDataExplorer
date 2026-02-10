@@ -2,10 +2,12 @@
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
-| 0.2.x   | Yes       |
-| 0.1.x   | No        |
+| Version   | Supported          |
+|-----------|--------------------|
+| >= 0.14.3 | Yes                |
+| < 0.14.3  | No (deprecated)    |
+
+**Important:** Versions prior to 0.14.3 have a broken auto-updater due to invalid signing keys. Users on older versions **must manually download** the latest release from the [Releases page](https://github.com/KodyDennon/SnapDataExplorer/releases/latest). Auto-update will work correctly from 0.14.3 onward.
 
 ## Reporting a Vulnerability
 

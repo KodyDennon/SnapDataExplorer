@@ -301,6 +301,31 @@
         </div>
     </section>
 
+    <!-- macOS Install Modal -->
+    <div id="macos-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full mx-4 p-8 shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                </div>
+                <h3 class="text-lg font-bold">Before you open the app</h3>
+            </div>
+            <p class="text-sm text-white/50 mb-4">
+                macOS will block the app because it isn't notarized (Apple charges $99/year). After installing, open <strong class="text-white/70">Terminal</strong> and run:
+            </p>
+            <div class="relative group mb-4">
+                <code id="xattr-cmd" class="block bg-black/60 p-4 rounded-lg font-mono text-sm text-green-400 select-all cursor-pointer pr-12">xattr -cr /Applications/"Snap Data Explorer.app"</code>
+                <button id="copy-xattr" class="absolute top-3 right-3 p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors text-white/40 hover:text-white/70" title="Copy to clipboard">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+            </div>
+            <p class="text-xs text-white/30 mb-6">Then open the app normally. You only need to do this once.</p>
+            <div class="flex gap-3 justify-end">
+                <button id="close-macos-modal" class="px-5 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 transition-colors">Got it</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="py-12 border-t border-white/5">
         <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-white/30">
@@ -395,6 +420,44 @@
         }
 
         setupDownloadLinks();
+
+        // macOS install modal
+        (function() {
+            const modal = document.getElementById('macos-modal');
+            const closeBtn = document.getElementById('close-macos-modal');
+            const copyBtn = document.getElementById('copy-xattr');
+            const cmdEl = document.getElementById('xattr-cmd');
+
+            function showModal(e) {
+                e.preventDefault();
+                const href = e.currentTarget.href;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                // Start download after a brief delay so modal is visible
+                setTimeout(() => { window.location.href = href; }, 300);
+            }
+
+            function hideModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            document.getElementById('btn-macos-arm').addEventListener('click', showModal);
+            document.getElementById('btn-macos-intel').addEventListener('click', showModal);
+            closeBtn.addEventListener('click', hideModal);
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) hideModal();
+            });
+
+            copyBtn.addEventListener('click', function() {
+                navigator.clipboard.writeText(cmdEl.textContent).then(() => {
+                    copyBtn.innerHTML = '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+                    }, 2000);
+                });
+            });
+        })();
     </script>
 
 </body>
