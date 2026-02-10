@@ -21,16 +21,16 @@ jobs:
         include:
           - os: macos-latest
             target: aarch64-apple-darwin
-            label: macOS-ARM
+            label: macOS-Apple-Silicon
           - os: macos-latest
             target: x86_64-apple-darwin
             label: macOS-Intel
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            label: Linux
+            label: Linux-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            label: Windows
+            label: Windows-x64
 
     runs-on: ${{ matrix.os }}
 
@@ -75,14 +75,53 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
-      - name: Build and release
+      - name: Build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ steps.tag.outputs.name }}
-          releaseName: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
-          releaseBody: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
-          releaseDraft: false
-          prerelease: false
           args: --target ${{ matrix.target }}
+
+      - name: Rename and Prepare Artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          VERSION="${{ steps.tag.outputs.name }}"
+          VERSION_CLEAN=${VERSION#v} # Remove 'v' prefix if present
+          
+          BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
+          
+          echo "Processing artifacts for ${{ matrix.label }}..."
+          
+          # macOS DMG
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            find "$BUNDLE_PATH/dmg" -name "*.dmg" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.dmg" \; 2>/dev/null || true
+          fi
+          
+          # Windows MSI/EXE
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            find "$BUNDLE_PATH/msi" -name "*.msi" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.msi" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/nsis" -name "*.exe" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.exe" \; 2>/dev/null || true
+          fi
+          
+          # Linux AppImage/DEB/RPM
+          if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
+            find "$BUNDLE_PATH/appimage" -name "*.AppImage" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/deb" -name "*.deb" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.deb" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/rpm" -name "*.rpm" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.rpm" \; 2>/dev/null || true
+          fi
+          
+          echo "Artifacts prepared:"
+          ls -lh artifacts/
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
+          body: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
+          files: artifacts/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
