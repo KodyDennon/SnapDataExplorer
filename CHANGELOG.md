@@ -1,3 +1,10 @@
+## [0.3.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.3.0...v0.3.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* replace deprecated macos-13 runner with macos-latest in release workflow ([3872e6c](https://github.com/KodyDennon/SnapDataExplorer/commit/3872e6c7fcbb8c3423e6e22e719bfdca0cb2ce70))
+
 # [0.3.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.2.0...v0.3.0) (2026-02-10)
 
 
