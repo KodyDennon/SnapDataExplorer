@@ -1,6 +1,20 @@
 # Snap Data Explorer
 
+![CI](https://github.com/KodyDennon/SnapDataExplorer/actions/workflows/ci.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/KodyDennon/SnapDataExplorer)
+![License](https://img.shields.io/badge/license-Source--Available-blue)
+![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
+![Downloads](https://img.shields.io/github/downloads/KodyDennon/SnapDataExplorer/total)
+
 A privacy-first desktop app that reconstructs and explores your Snapchat data exports. Browse chat history, search messages, view media galleries, and analyze your archive — all 100% local.
+
+> **Note:** Not affiliated with Snap Inc. This is an independent open-source project.
+
+## Quick Start
+
+1. **Download** — grab the [latest release](https://github.com/KodyDennon/SnapDataExplorer/releases/latest) for your OS
+2. **Get your data** — [request your Snapchat export](https://kodydennon.github.io/SnapDataExplorer/getting-started.html) (includes media/attachments)
+3. **Import** — open the app, select your zip or folder, done
 
 ## Features
 
@@ -21,7 +35,7 @@ A privacy-first desktop app that reconstructs and explores your Snapchat data ex
 
 ### Pre-built Binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/KodyDennon/SnapDataExplorer/releases) page:
+Download the latest release for your platform from the [Releases](https://github.com/KodyDennon/SnapDataExplorer/releases/latest) page:
 
 | Platform | Format |
 |----------|--------|
@@ -30,23 +44,12 @@ Download the latest release for your platform from the [Releases](https://github
 | Windows | `.msi` installer |
 | Linux | `.deb` / `.AppImage` |
 
-### ⚡ Easy Install (macOS)
+### macOS: "App is damaged" fix
 
-If you are a standard user on macOS, you can use our helper script to set up everything for you (including bypassing "Damaged App" warnings):
+Apple blocks apps that aren't notarized. If you see this warning, run:
 
 ```bash
-# 1. Download the repo
-git clone https://github.com/KodyDennon/SnapDataExplorer.git
-cd SnapDataExplorer
-
-# 2. Run the easy setup
-./scripts/easy_setup_mac.sh
-```
-
-**Common Issues:**
-If your app says *"is damaged and can't be opened"*, run this fix:
-```bash
-./scripts/gatekeeper_fix.sh
+xattr -cr /Applications/"Snap Data Explorer.app"
 ```
 
 ### Build from Source
@@ -79,6 +82,8 @@ npm run tauri build
    - Unzip it and select the folder
 
 **Tip:** When requesting your data, make sure "Include Media / Attachments" is enabled to get photos and videos linked to your messages.
+
+For a detailed walkthrough, see the [Getting Started guide](https://kodydennon.github.io/SnapDataExplorer/getting-started.html).
 
 ## Privacy
 
@@ -122,4 +127,9 @@ For reporting security vulnerabilities, see [SECURITY.md](SECURITY.md). Please d
 
 For questions, bugs, or feature requests:
 - Open an issue on [GitHub Issues](https://github.com/KodyDennon/SnapDataExplorer/issues)
-- Email: [support@mail.kodydennon.com](mailto:support@mail.kodydennon.com)
+- Email: [kodydennon@gmail.com](mailto:kodydennon@gmail.com)
+- Website: [kodydennon.github.io/SnapDataExplorer](https://kodydennon.github.io/SnapDataExplorer/)
+
+## Contributors
+
+[![Contributors](https://contrib.rocks/image?repo=KodyDennon/SnapDataExplorer)](https://github.com/KodyDennon/SnapDataExplorer/graphs/contributors)

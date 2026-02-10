@@ -83,6 +83,6 @@ jobs:
           tagName: ${{ steps.tag.outputs.name }}
           releaseName: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
           releaseBody: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
-          releaseDraft: true
-          prerelease: true
+          releaseDraft: false
+          prerelease: false
           args: --target ${{ matrix.target }}

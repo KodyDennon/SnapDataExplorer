@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Snap Data Explorer</title>
+    <meta name="description" content="Step-by-step guide to requesting your Snapchat data export and importing it into Snap Data Explorer.">
+
+    <meta property="og:title" content="Getting Started - Snap Data Explorer">
+    <meta property="og:description" content="Step-by-step guide to requesting your Snapchat data and exploring it locally.">
+    <meta property="og:type" content="website">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            DEFAULT: '#3344ff',
+                            light: '#5566ff',
+                            dark: '#2233dd',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .fade-section {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        html { scroll-behavior: smooth; }
+        .nav-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-white antialiased">
+
+    <!-- Sticky Nav -->
+    <nav class="fixed top-0 left-0 right-0 z-50 nav-blur bg-gray-950/80 border-b border-white/5">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="index.html" class="font-bold text-lg tracking-tight">Snap Data Explorer</a>
+            <div class="hidden md:flex items-center gap-8 text-sm text-white/60">
+                <a href="index.html#features" class="hover:text-white transition-colors">Features</a>
+                <a href="index.html#how-it-works" class="hover:text-white transition-colors">How It Works</a>
+                <a href="index.html#download" class="hover:text-white transition-colors">Download</a>
+                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+            <button id="mobile-menu-btn" class="md:hidden p-2 text-white/60 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden border-t border-white/5 px-6 py-4 space-y-3 text-sm text-white/60">
+            <a href="index.html#features" class="block hover:text-white transition-colors">Features</a>
+            <a href="index.html#how-it-works" class="block hover:text-white transition-colors">How It Works</a>
+            <a href="index.html#download" class="block hover:text-white transition-colors">Download</a>
+            <a href="https://github.com/KodyDennon/SnapDataExplorer" class="block hover:text-white transition-colors">GitHub</a>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="pt-32 pb-12">
+        <div class="max-w-3xl mx-auto px-6">
+            <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/60 transition-colors mb-6">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Back to home
+            </a>
+            <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">Getting Started</h1>
+            <p class="text-lg text-white/50">Everything you need to request your Snapchat data and start exploring it.</p>
+        </div>
+    </header>
+
+    <!-- Step 1: Request Your Data -->
+    <section class="py-12 border-t border-white/5">
+        <div class="max-w-3xl mx-auto px-6 fade-section">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 text-brand-light font-bold flex items-center justify-center flex-shrink-0">1</div>
+                <h2 class="text-2xl font-bold">Request your data from Snapchat</h2>
+            </div>
+            <div class="pl-14 space-y-4 text-white/60 text-[15px] leading-relaxed">
+                <p>Snapchat lets you download a copy of your data, including chat history, media, memories, and account info.</p>
+                <ol class="list-decimal list-inside space-y-3">
+                    <li>Go to <a href="https://accounts.snapchat.com" class="text-brand-light hover:underline">accounts.snapchat.com</a> and sign in with your Snapchat credentials.</li>
+                    <li>Click <strong class="text-white/80">My Data</strong> in the sidebar.</li>
+                    <li>Scroll down and click <strong class="text-white/80">Submit Request</strong>.</li>
+                    <li>
+                        <strong class="text-white/80">Important:</strong> Make sure the <strong class="text-white/80">"Include Media / Attachments"</strong> checkbox is enabled. Without this, you'll get chat text but no photos or videos.
+                    </li>
+                    <li>Wait for Snapchat to prepare your data. This usually takes a few hours, but can take up to a couple of days for large accounts.</li>
+                    <li>You'll receive an email when your download is ready. Click the link to download a <code class="bg-white/5 px-1.5 py-0.5 rounded text-sm">.zip</code> file.</li>
+                </ol>
+                <div class="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 mt-4">
+                    <p class="text-amber-300/80 text-sm"><strong>Tip:</strong> The download link expires after a few days. Download it promptly and save the zip file somewhere safe.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Step 2: What You'll Get -->
+    <section class="py-12 border-t border-white/5">
+        <div class="max-w-3xl mx-auto px-6 fade-section">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 text-brand-light font-bold flex items-center justify-center flex-shrink-0">2</div>
+                <h2 class="text-2xl font-bold">What you'll get</h2>
+            </div>
+            <div class="pl-14 space-y-4 text-white/60 text-[15px] leading-relaxed">
+                <p>Your Snapchat export is a zip file containing several folders and files. Here's what Snap Data Explorer uses:</p>
+                <div class="bg-white/[0.02] border border-white/5 rounded-xl p-5 font-mono text-sm space-y-1">
+                    <p class="text-white/70">mydata_1234567890/</p>
+                    <p class="pl-4 text-white/50">html/</p>
+                    <p class="pl-8 text-white/40">chat_history.html &mdash; <span class="font-sans text-xs">your conversations</span></p>
+                    <p class="pl-8 text-white/40">memories_history.html &mdash; <span class="font-sans text-xs">saved memories</span></p>
+                    <p class="pl-4 text-white/50">json/</p>
+                    <p class="pl-8 text-white/40">chat_history.json &mdash; <span class="font-sans text-xs">structured chat data with Media IDs</span></p>
+                    <p class="pl-8 text-white/40">snap_history.json &mdash; <span class="font-sans text-xs">snap send/receive events</span></p>
+                    <p class="pl-4 text-white/50">chat_media/ &mdash; <span class="font-sans text-xs">photos &amp; videos from chats</span></p>
+                </div>
+                <p>The app parses both HTML and JSON files and merges them together to give you the most complete picture possible. Media files are linked to their corresponding messages via Media IDs in the JSON data.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Step 3: Import -->
+    <section class="py-12 border-t border-white/5">
+        <div class="max-w-3xl mx-auto px-6 fade-section">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 text-brand-light font-bold flex items-center justify-center flex-shrink-0">3</div>
+                <h2 class="text-2xl font-bold">Import into Snap Data Explorer</h2>
+            </div>
+            <div class="pl-14 space-y-4 text-white/60 text-[15px] leading-relaxed">
+                <p>You have two options for importing:</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-white/[0.02] border border-white/5 rounded-xl p-5">
+                        <h4 class="font-semibold text-white/80 mb-2">Zip Import</h4>
+                        <p class="text-sm">Select the <code class="bg-white/5 px-1.5 py-0.5 rounded">.zip</code> file directly. The app will extract and process it automatically. This is the easiest option.</p>
+                    </div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-xl p-5">
+                        <h4 class="font-semibold text-white/80 mb-2">Folder Import</h4>
+                        <p class="text-sm">Unzip the file first, then select the extracted folder. Useful if you want to inspect the files beforehand.</p>
+                    </div>
+                </div>
+                <p><strong class="text-white/80">What happens during import:</strong></p>
+                <ol class="list-decimal list-inside space-y-2 text-sm">
+                    <li>The app detects HTML and JSON files in your export</li>
+                    <li>Chat history is parsed, deduplicated, and indexed for search</li>
+                    <li>Media files are scanned and linked to their corresponding messages</li>
+                    <li>Memories and snap history are imported</li>
+                    <li>Everything is stored in a local SQLite database on your machine</li>
+                </ol>
+                <p class="text-sm">Import typically takes a few seconds for small exports and up to a minute for very large ones.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Step 4: Troubleshooting -->
+    <section class="py-12 border-t border-white/5">
+        <div class="max-w-3xl mx-auto px-6 fade-section">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/40 font-bold flex items-center justify-center flex-shrink-0">?</div>
+                <h2 class="text-2xl font-bold">Troubleshooting</h2>
+            </div>
+            <div class="pl-14 space-y-6">
+                <div>
+                    <h4 class="font-semibold text-white/80 mb-2">Import seems to hang or take forever</h4>
+                    <p class="text-sm text-white/50">Very large exports (10,000+ messages with media) may take a minute. The progress bar in the app shows the current stage. If it's truly stuck, check the log file for errors.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white/80 mb-2">Some media isn't showing up</h4>
+                    <p class="text-sm text-white/50">About 5% of media referenced in chat history is typically missing from Snapchat exports. This is a limitation of Snapchat's export process, not the app. Media from <code class="bg-white/5 px-1.5 py-0.5 rounded">snap_history.json</code> events (sent/received snaps) cannot be linked because Snapchat doesn't include Media IDs for those events.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white/80 mb-2">"App is damaged" on macOS</h4>
+                    <p class="text-sm text-white/50 mb-2">Apple blocks unnotarized apps. Run this in Terminal to fix it:</p>
+                    <code class="block bg-black/40 p-3 rounded-lg font-mono text-sm text-green-400 select-all cursor-pointer">xattr -cr /Applications/"Snap Data Explorer.app"</code>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white/80 mb-2">Where are the log files?</h4>
+                    <div class="text-sm text-white/50 space-y-1">
+                        <p><strong class="text-white/60">macOS:</strong> <code class="bg-white/5 px-1.5 py-0.5 rounded">~/Library/Application Support/com.kody.snap-data-explorer-app/</code></p>
+                        <p><strong class="text-white/60">Windows:</strong> <code class="bg-white/5 px-1.5 py-0.5 rounded">%APPDATA%/com.kody.snap-data-explorer-app/</code></p>
+                        <p><strong class="text-white/60">Linux:</strong> <code class="bg-white/5 px-1.5 py-0.5 rounded">~/.local/share/com.kody.snap-data-explorer-app/</code></p>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white/80 mb-2">Want to start fresh?</h4>
+                    <p class="text-sm text-white/50">Delete the <code class="bg-white/5 px-1.5 py-0.5 rounded">index.db</code> file from the app data directory listed above, then re-import your data.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-16 border-t border-white/5">
+        <div class="max-w-3xl mx-auto px-6 text-center fade-section">
+            <h2 class="text-2xl font-bold mb-3">Ready to go?</h2>
+            <p class="text-white/40 mb-6">Download Snap Data Explorer and start exploring your archive.</p>
+            <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                Download Latest Release
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-white/5">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-white/30">
+            <div class="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+                <span>Built by <a href="https://kodydennon.com" class="hover:text-white/60 transition-colors">Kody Dennon</a></span>
+                <span class="hidden md:inline">&middot;</span>
+                <span>Not affiliated with Snap Inc.</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white/60 transition-colors">GitHub</a>
+                <a href="mailto:kodydennon@gmail.com" class="hover:text-white/60 transition-colors">Contact</a>
+                <a href="https://github.com/KodyDennon/SnapDataExplorer/blob/main/LICENSE" class="hover:text-white/60 transition-colors">License</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-section').forEach(el => observer.observe(el));
+
+        const btn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-menu');
+        btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+        menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => menu.classList.add('hidden')));
+    </script>
+
+</body>
+</html>

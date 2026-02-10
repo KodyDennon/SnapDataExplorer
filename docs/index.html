@@ -3,21 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snap Data Explorer - Privacy-First Snapchat Export Analyzer</title>
+    <title>Snap Data Explorer - Privacy-First Snapchat Data Viewer</title>
+    <meta name="description" content="Explore your Snapchat data exports locally. Browse chats, search messages, view media — 100% private, no cloud, no tracking.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Snap Data Explorer">
+    <meta property="og:description" content="Privacy-first desktop app to explore your Snapchat data exports. Browse chats, search messages, view media — all 100% local.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://kodydennon.github.io/SnapDataExplorer/">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Snap Data Explorer">
+    <meta name="twitter:description" content="Privacy-first desktop app to explore your Snapchat data exports. 100% local, no cloud, no tracking.">
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
                     },
                     colors: {
-                        snap: {
-                            yellow: '#FFFC00',
-                            black: '#000000',
-                            ghost: '#F2F2F2'
+                        brand: {
+                            DEFAULT: '#3344ff',
+                            light: '#5566ff',
+                            dark: '#2233dd',
                         }
                     }
                 }
@@ -25,96 +38,299 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+
+        /* Fade-in-on-scroll animation */
+        .fade-section {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Sticky nav blur */
+        .nav-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
     </style>
 </head>
-<body class="bg-black text-white antialiased">
+<body class="bg-gray-950 text-white antialiased">
+
+    <!-- Sticky Nav -->
+    <nav class="fixed top-0 left-0 right-0 z-50 nav-blur bg-gray-950/80 border-b border-white/5">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="#" class="font-bold text-lg tracking-tight">Snap Data Explorer</a>
+            <div class="hidden md:flex items-center gap-8 text-sm text-white/60">
+                <a href="#features" class="hover:text-white transition-colors">Features</a>
+                <a href="#how-it-works" class="hover:text-white transition-colors">How It Works</a>
+                <a href="#download" class="hover:text-white transition-colors">Download</a>
+                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white transition-colors flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+            <!-- Mobile menu button -->
+            <button id="mobile-menu-btn" class="md:hidden p-2 text-white/60 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-white/5 px-6 py-4 space-y-3 text-sm text-white/60">
+            <a href="#features" class="block hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" class="block hover:text-white transition-colors">How It Works</a>
+            <a href="#download" class="block hover:text-white transition-colors">Download</a>
+            <a href="https://github.com/KodyDennon/SnapDataExplorer" class="block hover:text-white transition-colors">GitHub</a>
+        </div>
+    </nav>
 
     <!-- Hero -->
-    <header class="relative overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-blue-900/20 z-0"></div>
-        <div class="container mx-auto px-6 py-24 relative z-10 text-center">
-            <div class="inline-block p-4 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 mb-8 animate-bounce">
-                <span class="text-snap-yellow font-bold text-sm tracking-wide uppercase">Privacy First &bull; 100% Local</span>
+    <header id="download" class="relative overflow-hidden pt-32 pb-24">
+        <div class="absolute inset-0 bg-gradient-to-br from-brand/10 via-purple-900/10 to-transparent"></div>
+        <div class="relative max-w-4xl mx-auto px-6 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/10 border border-brand/20 text-brand-light text-sm font-medium mb-8">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Privacy First &middot; 100% Local
             </div>
-            <h1 class="text-5xl md:text-7xl font-black mb-6 tracking-tight">
-                Inspect Your<br/>
-                <span class="bg-clip-text text-transparent bg-gradient-to-r from-snap-yellow to-yellow-500">Snapchat Data</span>
+
+            <h1 class="text-5xl md:text-7xl font-black tracking-tight mb-6 leading-[1.1]">
+                Explore Your<br>
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-brand-light to-purple-400">Snapchat Data</span>
             </h1>
-            <p class="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto mb-12">
-                Reconstruct chat history, browse memories, and analyze your digital footprint. No cloud, no tracking, just you and your data.
+
+            <p class="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-12 leading-relaxed">
+                Reconstruct chat history, browse memories, search messages, and view your media gallery. A desktop app that processes everything locally — your data never leaves your machine.
             </p>
-            
-            <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
-                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="bg-snap-yellow text-black px-8 py-4 rounded-2xl font-bold text-lg hover:scale-105 transition-transform flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm1.5-6.6c.83 0 1.5.67 1.5 1.5v.1c0 1.11-.9 2-2 2h-.5v.5h-2v-1h.5c.55 0 1-.45 1-1v-.1c0-.28.22-.5.5-.5s.5.22.5.5v2.1l2.5-1.5c.28-.17.28-.58 0-.75L12.5 7.4V5h-1v4.4z"/></svg>
-                    Download Latest Release
+
+            <!-- Platform download buttons -->
+            <div class="flex flex-wrap gap-3 justify-center mb-4">
+                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    macOS
                 </a>
-                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="bg-white/10 border border-white/20 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                    View on GitHub
+                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                    Windows
+                </a>
+                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.015-.465.044C8.87.689 6.584 3.418 6.584 6.655c0 .134.008.268.022.4-.573.084-1.096.262-1.544.522-.896.519-1.554 1.366-1.823 2.394-.27 1.028-.166 2.11.29 3.05.456.939 1.217 1.658 2.145 2.024-.019.122-.03.246-.03.372 0 2.078 1.291 3.896 3.203 4.62-.05.218-.076.443-.076.672 0 1.73 1.41 3.14 3.14 3.14s3.14-1.41 3.14-3.14c0-.229-.026-.454-.076-.672 1.912-.724 3.203-2.542 3.203-4.62 0-.126-.011-.25-.03-.372.928-.366 1.69-1.085 2.145-2.024.456-.94.56-2.022.29-3.05-.269-1.028-.927-1.875-1.823-2.394-.448-.26-.971-.438-1.544-.522.014-.132.022-.266.022-.4 0-3.237-2.286-5.966-5.455-6.611A4.368 4.368 0 0012.504 0z"/></svg>
+                    Linux
                 </a>
             </div>
-            <p class="mt-4 text-xs text-white/30">Available for macOS (Intel/M1+), Windows, and Linux.</p>
+            <a href="https://github.com/KodyDennon/SnapDataExplorer/releases" class="text-sm text-white/40 hover:text-white/60 transition-colors">
+                View all releases &rarr;
+            </a>
+            <p class="mt-6 text-xs text-white/30">Available for macOS (Intel & Apple Silicon), Windows, and Linux</p>
         </div>
     </header>
 
     <!-- Features -->
-    <section class="py-24 bg-zinc-900 border-y border-white/5">
-        <div class="container mx-auto px-6 max-w-6xl">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="p-8 rounded-3xl bg-black/20 border border-white/5">
-                    <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6 text-purple-400 text-2xl font-bold">💬</div>
-                    <h3 class="text-xl font-bold mb-3">Chat Replay</h3>
-                    <p class="text-white/50 leading-relaxed">Reads messy HTML/JSON exports and presents them as a clean, searchable chat interface.</p>
+    <section id="features" class="py-24 border-t border-white/5">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="text-center mb-16 fade-section">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Everything you need to explore your archive</h2>
+                <p class="text-white/40 max-w-xl mx-auto">Built for speed and privacy. No account required, no internet needed.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 fade-section">
+                <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Chat Reconstruction</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Rebuilds complete chat threads from Snapchat HTML and JSON exports into a clean, familiar interface.</p>
                 </div>
-                <div class="p-8 rounded-3xl bg-black/20 border border-white/5">
-                    <div class="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center mb-6 text-blue-400 text-2xl font-bold">🖼️</div>
-                    <h3 class="text-xl font-bold mb-3">Gallery & Media</h3>
-                    <p class="text-white/50 leading-relaxed">Automatically links downloaded media files to their messages. View your memories in full quality.</p>
+                <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Full-Text Search</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Instantly search across all your conversations with SQLite FTS5. Find any message in milliseconds.</p>
                 </div>
-                <div class="p-8 rounded-3xl bg-black/20 border border-white/5">
-                    <div class="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center mb-6 text-green-400 text-2xl font-bold">🔒</div>
-                    <h3 class="text-xl font-bold mb-3">Zero Privacy Risk</h3>
-                    <p class="text-white/50 leading-relaxed">Your data never leaves your device. No analytics, no cloud uploads, no tracking. Open source.</p>
+                <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Media Gallery</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Browse photos and videos with a lightbox viewer. Media is automatically linked to the right conversations.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Memories Browser</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">View your saved Snapchat memories with timestamps and metadata, organized chronologically.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Dashboard & Analytics</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Message stats, top contacts, date ranges, and data integrity reports at a glance.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    </div>
+                    <h3 class="font-semibold mb-2">Dark Mode & Accessibility</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Light, dark, and system themes. Full keyboard navigation, ARIA labels, and screen reader support.</p>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="py-24 border-t border-white/5 bg-white/[0.01]">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="text-center mb-16 fade-section">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
+                <p class="text-white/40">Three steps to explore your entire Snapchat history.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 fade-section">
+                <div class="text-center">
+                    <div class="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 text-brand-light font-bold text-lg flex items-center justify-center mx-auto mb-5">1</div>
+                    <h3 class="font-semibold mb-2">Request your data</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Go to <a href="https://accounts.snapchat.com" class="text-brand-light hover:underline">accounts.snapchat.com</a>, navigate to My Data, and submit a download request. Make sure to include media.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 text-brand-light font-bold text-lg flex items-center justify-center mx-auto mb-5">2</div>
+                    <h3 class="font-semibold mb-2">Download & open</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Download the zip file from Snapchat's email, then open Snap Data Explorer and select it.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 rounded-full bg-brand/10 border border-brand/20 text-brand-light font-bold text-lg flex items-center justify-center mx-auto mb-5">3</div>
+                    <h3 class="font-semibold mb-2">Browse & search</h3>
+                    <p class="text-sm text-white/40 leading-relaxed">Explore your chats, search messages, browse media, and view analytics. Everything stays local.</p>
+                </div>
+            </div>
+            <div class="text-center mt-12 fade-section">
+                <a href="getting-started.html" class="text-brand-light hover:underline text-sm font-medium">Read the full guide &rarr;</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Privacy -->
+    <section class="py-24 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="text-center mb-16 fade-section">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Built for privacy</h2>
+                <p class="text-white/40">Your data is yours. We never see it, touch it, or transmit it.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 fade-section">
+                <div class="flex items-start gap-4 p-5 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-sm mb-1">Zero network access</h4>
+                        <p class="text-xs text-white/40">The app makes no HTTP requests. Ever. Verify it yourself in the source code.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 p-5 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-sm mb-1">No telemetry or analytics</h4>
+                        <p class="text-xs text-white/40">No tracking pixels, no usage data, no crash reports. Nothing is collected.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 p-5 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-sm mb-1">100% local processing</h4>
+                        <p class="text-xs text-white/40">All parsing and indexing happens on your machine. Data is stored in a local SQLite database.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 p-5 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-sm mb-1">Open source</h4>
+                        <p class="text-xs text-white/40">Every line of code is available for inspection. Build it from source if you prefer.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Get Your Data CTA -->
+    <section class="py-16 border-t border-white/5 bg-white/[0.01]">
+        <div class="max-w-3xl mx-auto px-6 text-center fade-section">
+            <h2 class="text-2xl font-bold mb-3">Ready to explore your Snapchat history?</h2>
+            <p class="text-white/40 mb-6">Follow our step-by-step guide to request your data from Snapchat and import it into Snap Data Explorer.</p>
+            <a href="getting-started.html" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                Getting Started Guide
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </a>
         </div>
     </section>
 
     <!-- Troubleshooting -->
-    <section class="py-24 container mx-auto px-6 max-w-4xl">
-        <h2 class="text-3xl font-bold mb-8">Troubleshooting</h2>
-        
-        <div class="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl mb-8">
-            <h3 class="text-xl font-bold text-red-200 mb-4 flex items-center gap-2">
-                ⚠️ macOS: "App is damaged and can't be opened"
-            </h3>
-            <p class="text-white/70 mb-4">
-                Apple blocks apps that aren't notarized (which costs $100/year). Since this is a free open-source project, you may see this error.
-            </p>
-            <p class="text-white/70 mb-4 font-bold">To fix it, download our fix script or run this command in Terminal:</p>
-            <div class="bg-black/50 p-4 rounded-xl font-mono text-sm text-green-400 select-all cursor-pointer">
-                xattr -cr /Applications/"Snap Data Explorer.app"
+    <section class="py-24 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <h2 class="text-3xl font-bold mb-12 text-center fade-section">Troubleshooting</h2>
+            <div class="space-y-6 fade-section">
+                <div class="p-6 rounded-2xl bg-red-500/5 border border-red-500/10">
+                    <h3 class="font-semibold text-red-300 mb-3">macOS: "App is damaged and can't be opened"</h3>
+                    <p class="text-sm text-white/50 mb-4">
+                        Apple blocks apps that aren't notarized (which costs $99/year). Since this is a free open-source project, you may see this error. To fix it, run this in Terminal:
+                    </p>
+                    <code class="block bg-black/40 p-4 rounded-lg font-mono text-sm text-green-400 select-all cursor-pointer">xattr -cr /Applications/"Snap Data Explorer.app"</code>
+                </div>
+                <div class="p-6 rounded-2xl bg-blue-500/5 border border-blue-500/10">
+                    <h3 class="font-semibold text-blue-300 mb-3">Build from source</h3>
+                    <p class="text-sm text-white/50 mb-3">
+                        Requires <a href="https://nodejs.org/" class="text-blue-400 hover:underline">Node.js 20+</a> and <a href="https://rustup.rs/" class="text-blue-400 hover:underline">Rust stable</a>. See <a href="https://v2.tauri.app/start/prerequisites/" class="text-blue-400 hover:underline">Tauri v2 prerequisites</a> for platform-specific dependencies.
+                    </p>
+                    <code class="block bg-black/40 p-4 rounded-lg font-mono text-sm text-blue-300">git clone https://github.com/KodyDennon/SnapDataExplorer.git<br>cd SnapDataExplorer<br>npm install && npm run tauri dev</code>
+                </div>
             </div>
-        </div>
-
-        <div class="bg-blue-500/10 border border-blue-500/20 p-8 rounded-3xl">
-            <h3 class="text-xl font-bold text-blue-200 mb-4">Building from Source</h3>
-            <p class="text-white/70 mb-4">
-                Want to modify the app? We have made it easy for anyone to build it themselves.
-            </p>
-            <code class="block bg-black/50 p-4 rounded-xl font-mono text-sm text-blue-300">
-                1. Clone the repo<br/>
-                2. Run ./scripts/easy_setup_mac.sh
-            </code>
         </div>
     </section>
 
-    <footer class="py-12 border-t border-white/5 text-center text-white/30 text-sm">
-        <p>Built by Kody Dennon. Not affiliated with Snap Inc.</p>
-        <p class="mt-2"><a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white transition-colors">Source Code</a> &bull; <a href="LICENSE" class="hover:text-white transition-colors">License</a></p>
+    <!-- Footer -->
+    <footer class="py-12 border-t border-white/5">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-white/30">
+            <div class="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+                <span>Built by <a href="https://kodydennon.com" class="hover:text-white/60 transition-colors">Kody Dennon</a></span>
+                <span class="hidden md:inline">&middot;</span>
+                <span>Not affiliated with Snap Inc.</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white/60 transition-colors">GitHub</a>
+                <a href="mailto:kodydennon@gmail.com" class="hover:text-white/60 transition-colors">Contact</a>
+                <a href="https://github.com/KodyDennon/SnapDataExplorer/blob/main/LICENSE" class="hover:text-white/60 transition-colors">License</a>
+            </div>
+        </div>
     </footer>
+
+    <script>
+        // Fade-in on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-section').forEach(el => observer.observe(el));
+
+        // Mobile menu toggle
+        const btn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-menu');
+        btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+        menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => menu.classList.add('hidden')));
+    </script>
 
 </body>
 </html>
