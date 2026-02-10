@@ -1,3 +1,10 @@
+## [0.14.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.0...v0.14.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* update environment variable for Tauri signing process ([315ac9b](https://github.com/KodyDennon/SnapDataExplorer/commit/315ac9bd587b99d27d4e6ae62fc99807e117798f))
+
 # [0.14.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.13.0...v0.14.0) (2026-02-10)
 
 
