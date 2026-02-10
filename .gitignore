@@ -54,3 +54,8 @@ src-tauri/gen/schemas
 # Environment
 .env
 .env.*
+
+# AI / internal planning docs
+.claude/
+GEMINI.md
+snapchat_data_explorer_*.md
