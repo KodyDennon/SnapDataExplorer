@@ -1,3 +1,23 @@
+# [0.3.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.2.0...v0.3.0) (2026-02-10)
+
+
+### Bug Fixes
+
+* bump Node.js to 22 in all workflows for semantic-release v25 compatibility ([7b2a9b3](https://github.com/KodyDennon/SnapDataExplorer/commit/7b2a9b3a4009c8e1b849c1bcfc28cb0d0aa01ca3))
+
+
+### Features
+
+* add AI/internal planning documents to .gitignore ([657789d](https://github.com/KodyDennon/SnapDataExplorer/commit/657789d312cf3a601c4daa920f98a1150cea5a4b))
+* add release script for version management and tagging ([37057d0](https://github.com/KodyDennon/SnapDataExplorer/commit/37057d0633f974158c8ee3dc09d4836d2fc9cbf7))
+* add testing framework and initial tests ([8cee11a](https://github.com/KodyDennon/SnapDataExplorer/commit/8cee11aaaab384382ec02fd20c8fa4680a47579b))
+* enhance release process with Rust setup and update manual release script ([b7c4a54](https://github.com/KodyDennon/SnapDataExplorer/commit/b7c4a543378013b3ffcc6dcf49e3ef5a3470f908))
+* enhance release workflow with manual trigger and tag resolution ([de3c200](https://github.com/KodyDennon/SnapDataExplorer/commit/de3c20053d8e20ce9feb246219d4cc81c5c19473))
+* integrate semantic-release for automated versioning and changelog generation ([9e25f5d](https://github.com/KodyDennon/SnapDataExplorer/commit/9e25f5d2506b876a3b965e4175208418017e3bb4))
+* remove phased development plan document for project cleanup ([084e4bc](https://github.com/KodyDennon/SnapDataExplorer/commit/084e4bcef88d99e5813c65e69aba368a205c084d))
+* remove project documentation files for cleanup ([56e780e](https://github.com/KodyDennon/SnapDataExplorer/commit/56e780ed7a80cea4a6ee0c3ed6585defdfb8ced5))
+* update homepage URL and add documentation for getting started ([7cc3fb3](https://github.com/KodyDennon/SnapDataExplorer/commit/7cc3fb395f9c785fcaafad42db0e92070abb9b90))
+
 # Changelog
 
 All notable changes to Snap Data Explorer will be documented in this file.
