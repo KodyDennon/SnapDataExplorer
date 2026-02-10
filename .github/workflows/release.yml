@@ -88,6 +88,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
         with:
           tagName: ${{ steps.tag.outputs.name }}
           releaseName: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
@@ -106,26 +108,37 @@ jobs:
           
           echo "Processing artifacts for ${{ matrix.label }}..."
           
-          # macOS DMG
+          # macOS DMG & Updater (.tar.gz)
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             find "$BUNDLE_PATH/dmg" -name "*.dmg" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.dmg" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/macos" -name "*.tar.gz" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.app.tar.gz" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/macos" -name "*.tar.gz.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.app.tar.gz.sig" \; 2>/dev/null || true
           fi
           
-          # Windows MSI/EXE
+          # Windows MSI/EXE & Updater (.zip)
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             find "$BUNDLE_PATH/msi" -name "*.msi" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.msi" \; 2>/dev/null || true
             find "$BUNDLE_PATH/nsis" -name "*.exe" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.exe" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/nsis" -name "*.zip" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.zip" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/nsis" -name "*.zip.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.zip.sig" \; 2>/dev/null || true
           fi
           
-          # Linux AppImage/DEB/RPM
+          # Linux AppImage/DEB/RPM & Updater (.tar.gz)
           if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
             find "$BUNDLE_PATH/appimage" -name "*.AppImage" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/appimage" -name "*.AppImage.tar.gz" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage.tar.gz" \; 2>/dev/null || true
+            find "$BUNDLE_PATH/appimage" -name "*.AppImage.tar.gz.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage.tar.gz.sig" \; 2>/dev/null || true
             find "$BUNDLE_PATH/deb" -name "*.deb" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.deb" \; 2>/dev/null || true
-            find "$BUNDLE_PATH/rpm" -name "*.rpm" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.rpm" \; 2>/dev/null || true
           fi
           
           echo "Artifacts prepared:"
           ls -lh artifacts/
+
+      - name: Upload artifacts for updater
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.label }}
+          path: artifacts/*
 
       - name: Release Extra Artifacts
         uses: softprops/action-gh-release@v2
@@ -134,5 +147,81 @@ jobs:
           tag_name: ${{ steps.tag.outputs.name }}
           files: artifacts/*
           make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  updater:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          TAG_NAME="${{ inputs.tag || github.event.inputs.tag }}"
+          if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" == "null" ]; then
+            TAG_NAME="${{ github.ref_name }}"
+          fi
+          echo "name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          VERSION="${{ steps.tag.outputs.name }}"
+          REPO_URL="https://github.com/${{ github.repository }}/releases/download/$VERSION"
+          
+          # Initialize the JSON structure
+          jq -n \
+            --arg ver "$VERSION" \
+            --arg notes "Release $VERSION. See CHANGELOG.md for details." \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version: $ver, notes: $notes, pub_date: $date, platforms: {}}' > latest.json
+
+          # Helper function to add platform data
+          # Usage: add_platform <json_key> <artifact_glob> <extension>
+          add_platform() {
+            local KEY=$1
+            local GLOB=$2
+            local EXT=$3
+            
+            # Find the signature and binary
+            local SIG_FILE=$(find all-artifacts -name "*${GLOB}*${EXT}.sig" | head -n 1)
+            local BIN_FILE=$(find all-artifacts -name "*${GLOB}*${EXT}" | grep -v ".sig" | head -n 1)
+            
+            if [ -n "$SIG_FILE" ] && [ -n "$BIN_FILE" ]; then
+              local SIG=$(cat "$SIG_FILE")
+              local FILENAME=$(basename "$BIN_FILE")
+              local URL="${REPO_URL}/${FILENAME}"
+              
+              echo "Mapping $KEY -> $FILENAME"
+              
+              # Update latest.json using jq
+              jq --arg key "$KEY" --arg url "$URL" --arg sig "$SIG" \
+                '.platforms[$key] = {url: $url, signature: $sig}' latest.json > latest.json.tmp && mv latest.json.tmp latest.json
+            else
+              echo "Warning: Missing artifacts for $KEY (Glob: $GLOB, Ext: $EXT)"
+            fi
+          }
+
+          # Map artifacts to Tauri platform keys
+          add_platform "darwin-aarch64" "macOS-Apple-Silicon" ".app.tar.gz"
+          add_platform "darwin-x86_64" "macOS-Intel" ".app.tar.gz"
+          add_platform "linux-x86_64" "Linux-x64" ".AppImage.tar.gz"
+          add_platform "windows-x86_64" "Windows-x64" ".zip"
+
+          echo "Final latest.json:"
+          cat latest.json
+
+      - name: Upload latest.json to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          files: latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

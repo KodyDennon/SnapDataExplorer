@@ -8,6 +8,7 @@ import { SearchView } from "./components/SearchView";
 import { GalleryView } from "./components/GalleryView";
 import { MemoriesView } from "./components/MemoriesView";
 import { ChillGallery } from "./components/ChillGallery";
+import { Updater } from "./components/Updater";
 import { ToastContainer } from "./components/Toast";
 import { ExportSet, IngestionProgress, IngestionResult } from "./types";
 import { listen } from "@tauri-apps/api/event";
@@ -228,6 +229,7 @@ function App() {
         )}
       </main>
 
+      <Updater addToast={addToast} />
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
   );

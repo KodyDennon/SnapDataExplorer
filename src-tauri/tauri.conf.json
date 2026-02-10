@@ -31,6 +31,14 @@
       }
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/KodyDennon/SnapDataExplorer/releases/latest/download/latest.json"
+      ],
+      "pubkey": "YOUR_ACTUAL_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
