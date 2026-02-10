@@ -85,16 +85,15 @@ jobs:
         run: cargo test
 
       - name: Build
-        uses: tauri-apps/tauri-action@v0
+        uses: nick-fields/retry@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
         with:
-          tagName: ${{ steps.tag.outputs.name }}
-          releaseName: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
-          releaseBody: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
-          args: --target ${{ matrix.target }}
+          timeout_minutes: 30
+          max_attempts: 3
+          command: npm run tauri build -- --target ${{ matrix.target }}
 
       - name: Rename and Prepare Artifacts
         shell: bash
