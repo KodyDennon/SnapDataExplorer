@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.12.0...v0.13.0) (2026-02-10)
+
+
+### Features
+
+* add v1Compatible option for updater artifacts in tauri configuration ([ac3d878](https://github.com/KodyDennon/SnapDataExplorer/commit/ac3d8786a9f6bbd2b5d01a4edc113bfa5ad1ab59))
+
 # [0.12.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.11.0...v0.12.0) (2026-02-10)
 
 
