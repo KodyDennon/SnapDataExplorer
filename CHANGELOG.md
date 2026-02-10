@@ -1,3 +1,10 @@
+## [0.8.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.8.0...v0.8.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* **security:** allow updater and relaunch commands in ACL ([7164613](https://github.com/KodyDennon/SnapDataExplorer/commit/7164613d2ad371e3b314aca9e80e40c6a4ecd633))
+
 # [0.8.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.7.2...v0.8.0) (2026-02-10)
 
 
