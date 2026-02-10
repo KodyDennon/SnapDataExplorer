@@ -10,6 +10,7 @@ interface SidebarProps {
   onSelectExport: (exp: ExportSet) => void;
   onNavigate: (page: string) => void;
   onOpenSetup: () => void;
+  onOpenAbout: () => void;
   onResetData: () => void;
   onReimport: () => void;
   activePage: string;
@@ -86,6 +87,7 @@ export function Sidebar({
   onSelectExport,
   onNavigate,
   onOpenSetup,
+  onOpenAbout,
   onResetData,
   onReimport,
   activePage,
@@ -135,7 +137,7 @@ export function Sidebar({
   return (
     <div className="w-72 bg-surface-50 dark:bg-surface-900 text-surface-600 dark:text-surface-300 flex flex-col h-screen border-r border-surface-200 dark:border-surface-800">
       {/* Logo & Branding */}
-      <div className="p-5 border-b border-surface-200 dark:border-surface-800">
+      <div className="p-5 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 overflow-hidden">
             <img
@@ -154,6 +156,15 @@ export function Sidebar({
             <p className="text-xs text-surface-400">Data Archaeology</p>
           </div>
         </div>
+        <button 
+          onClick={onOpenAbout}
+          className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-brand-500 transition-all"
+          title="About & Updates"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
 
       {/* Mode Toggle */}

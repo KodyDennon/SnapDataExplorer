@@ -9,6 +9,7 @@ import { GalleryView } from "./components/GalleryView";
 import { MemoriesView } from "./components/MemoriesView";
 import { ChillGallery } from "./components/ChillGallery";
 import { Updater } from "./components/Updater";
+import { AboutModal } from "./components/AboutModal";
 import { ToastContainer } from "./components/Toast";
 import { ExportSet, IngestionProgress, IngestionResult } from "./types";
 import { listen } from "@tauri-apps/api/event";
@@ -24,6 +25,7 @@ function App() {
   const [currentExport, setCurrentExport] = useState<ExportSet | null>(null);
   const [progress, setProgress] = useState<IngestionProgress | null>(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -171,6 +173,7 @@ function App() {
           onSelectExport={handleSelectExport}
           onNavigate={(page) => { setActivePage(page); if (window.innerWidth < 768) setSidebarOpen(false); }}
           onOpenSetup={() => setShowSetup(true)}
+          onOpenAbout={() => setShowAbout(true)}
           onResetData={handleResetData}
           onReimport={handleReimport}
           activePage={activePage}
@@ -229,6 +232,7 @@ function App() {
         )}
       </main>
 
+      <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
       <Updater addToast={addToast} />
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
