@@ -100,6 +100,7 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
             </Card>
           </div>
         )}
+        <AIAttribution />
       </div>
     );
   }
@@ -254,11 +255,36 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
           </Card>
         </div>
       )}
+      <AIAttribution />
     </div>
   );
 }
 
 // --- Supporting Components ---
+
+function AIAttribution() {
+  return (
+    <div className="mt-16 pt-8 border-t border-surface-200 dark:border-surface-800 text-center opacity-60 hover:opacity-100 transition-opacity pb-8">
+      <p className="text-xs font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-widest mb-4">
+        Developed 100% by AI
+      </p>
+      <div className="flex flex-wrap justify-center gap-3 text-[10px] font-bold text-surface-600 dark:text-surface-400">
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> CLAUDE 4.5
+        </span>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-600" /> CLAUDE 4.6
+        </span>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> GEMINI 3
+        </span>
+      </div>
+      <p className="mt-4 text-[10px] text-surface-400 dark:text-surface-500 max-w-md mx-auto leading-relaxed italic">
+        Experimental software authored by autonomous agents. Privacy-first, local-only architecture maintained throughout development.
+      </p>
+    </div>
+  );
+}
 
 function ProgressCard({ progress }: { progress: IngestionProgress }) {
   return (

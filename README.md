@@ -123,6 +123,21 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for developmen
 
 For reporting security vulnerabilities, see [SECURITY.md](SECURITY.md). Please do **not** open public issues for security reports.
 
+## AI Disclosure & Acknowledgments
+
+This project is unique in that it is **100% AI-developed**. Every line of code, from the Rust backend to the React frontend, was authored by advanced large language models under human guidance.
+
+### 🤖 The AI Team
+- **Claude 4.5 Opus & Sonnet**
+- **Claude 4.6 Opus**
+- **Gemini 3 Pro & Flash**
+
+### ⚠️ Disclaimer
+As an AI-generated project, this software is provided "as-is" without warranty of any kind. While rigorous testing has been applied, users should be aware that:
+1. **Experimental Nature:** The architecture and logic were devised by AI.
+2. **Privacy Focus:** Despite being AI-coded, the "100% local" promise is strictly maintained.
+3. **Verification:** Always verify the integrity of your data when using automated tools.
+
 ## Support
 
 For questions, bugs, or feature requests:
