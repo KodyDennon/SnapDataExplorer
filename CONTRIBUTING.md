@@ -79,7 +79,7 @@ Releases are fully automated. When commits are merged to `main`:
 3. `CHANGELOG.md` is generated from commit messages
 4. A git tag is created and pushed
 5. GitHub Actions builds platform binaries (macOS ARM/Intel, Windows, Linux)
-6. A draft GitHub Release is created with binaries attached
+6. A GitHub Release is published with binaries attached
 
 No manual version bumping is needed. Just write good commit messages.
 
