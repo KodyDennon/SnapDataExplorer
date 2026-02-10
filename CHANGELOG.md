@@ -1,3 +1,10 @@
+## [0.8.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.8.1...v0.8.2) (2026-02-10)
+
+
+### Bug Fixes
+
+* **ci:** correct process plugin permission name in ACL ([dde5281](https://github.com/KodyDennon/SnapDataExplorer/commit/dde5281d447e2f36f8f51d27aa416ae4ffa65e4f))
+
 ## [0.8.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.8.0...v0.8.1) (2026-02-10)
 
 
