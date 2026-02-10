@@ -9,6 +9,8 @@
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
+    "updater:default",
+    "process:allow-relaunch",
     {
       "identifier": "core:default",
       "allow": [
