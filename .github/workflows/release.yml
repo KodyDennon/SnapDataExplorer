@@ -172,13 +172,18 @@ jobs:
       - name: Generate latest.json
         shell: bash
         run: |
-          VERSION="${{ steps.tag.outputs.name }}"
-          REPO_URL="https://github.com/${{ github.repository }}/releases/download/$VERSION"
+          # Strip 'v' prefix for the version number used in the JSON if present
+          TAG_VERSION="${{ steps.tag.outputs.name }}"
+          VERSION="${TAG_VERSION#v}"
+          
+          REPO_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}"
+          
+          echo "Generating latest.json for version $VERSION (Tag: $TAG_VERSION)"
           
           # Initialize the JSON structure
           jq -n \
             --arg ver "$VERSION" \
-            --arg notes "Release $VERSION. See CHANGELOG.md for details." \
+            --arg notes "Release $TAG_VERSION. See CHANGELOG.md for details." \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             '{version: $ver, notes: $notes, pub_date: $date, platforms: {}}' > latest.json
 
@@ -189,33 +194,47 @@ jobs:
             local GLOB=$2
             local EXT=$3
             
-            # Find the signature and binary
-            local SIG_FILE=$(find all-artifacts -name "*${GLOB}*${EXT}.sig" | head -n 1)
-            local BIN_FILE=$(find all-artifacts -name "*${GLOB}*${EXT}" | grep -v ".sig" | head -n 1)
+            echo "Searching for $KEY artifacts (Glob: $GLOB, Ext: $EXT)..."
+            
+            # Find the signature and binary - using find with maxdepth 2 to stay within all-artifacts structure
+            local SIG_FILE=$(find all-artifacts -maxdepth 3 -name "*${GLOB}*${EXT}.sig" | head -n 1)
+            local BIN_FILE=$(find all-artifacts -maxdepth 3 -name "*${GLOB}*${EXT}" | grep -v ".sig" | head -n 1)
             
             if [ -n "$SIG_FILE" ] && [ -n "$BIN_FILE" ]; then
               local SIG=$(cat "$SIG_FILE")
               local FILENAME=$(basename "$BIN_FILE")
               local URL="${REPO_URL}/${FILENAME}"
               
-              echo "Mapping $KEY -> $FILENAME"
+              echo "  Found: $FILENAME"
+              echo "  Mapping $KEY -> $URL"
               
               # Update latest.json using jq
               jq --arg key "$KEY" --arg url "$URL" --arg sig "$SIG" \
                 '.platforms[$key] = {url: $url, signature: $sig}' latest.json > latest.json.tmp && mv latest.json.tmp latest.json
             else
-              echo "Warning: Missing artifacts for $KEY (Glob: $GLOB, Ext: $EXT)"
+              echo "  Warning: Missing artifacts for $KEY"
+              ls -R all-artifacts | grep "$GLOB" || echo "    No files matching $GLOB found at all."
             fi
           }
 
-          # Map artifacts to Tauri platform keys
+          # Map artifacts to Tauri platform keys (including aliases for robustness)
+          # macOS Apple Silicon
           add_platform "darwin-aarch64" "macOS-Apple-Silicon" ".app.tar.gz"
+          add_platform "macos-aarch64" "macOS-Apple-Silicon" ".app.tar.gz"
+          
+          # macOS Intel
           add_platform "darwin-x86_64" "macOS-Intel" ".app.tar.gz"
+          add_platform "macos-x86_64" "macOS-Intel" ".app.tar.gz"
+          
+          # Linux
           add_platform "linux-x86_64" "Linux-x64" ".AppImage.tar.gz"
+          
+          # Windows
           add_platform "windows-x86_64" "Windows-x64" ".zip"
+          add_platform "windows-x64" "Windows-x64" ".zip"
 
-          echo "Final latest.json:"
-          cat latest.json
+          echo "Final latest.json content:"
+          jq . latest.json
 
       - name: Upload latest.json to Release
         uses: softprops/action-gh-release@v2
