@@ -1,3 +1,10 @@
+## [0.14.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.1...v0.14.2) (2026-02-10)
+
+
+### Bug Fixes
+
+* update Tauri signing private key password and public key in configuration ([a56c1bb](https://github.com/KodyDennon/SnapDataExplorer/commit/a56c1bb862ebbb4377da046b19268bd1af87ea54))
+
 ## [0.14.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.0...v0.14.1) (2026-02-10)
 
 
