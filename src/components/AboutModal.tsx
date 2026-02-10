@@ -12,7 +12,7 @@ interface AboutModalProps {
 }
 
 export function AboutModal({ isOpen, onClose }: AboutModalProps) {
-  const { checking, update, checkForUpdates, installUpdate } = useUpdater();
+  const { checking, downloading, progress, update, checkForUpdates, installUpdate } = useUpdater();
   const [version, setVersion] = useState<string>("...");
 
   useEffect(() => {
@@ -51,7 +51,8 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 transition-colors"
+              disabled={downloading}
+              className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 transition-colors disabled:opacity-20"
             >
               <X className="w-5 h-5" />
             </button>
@@ -84,17 +85,33 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
             <Card variant="surface" padding="lg" className="border-brand-500/20 bg-brand-500/5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <RefreshCw className={cn("w-4 h-4 text-brand-500", checking && "animate-spin")} />
-                  <span className="text-sm font-bold text-surface-900 dark:text-white uppercase tracking-wider">Updates</span>
+                  <RefreshCw className={cn("w-4 h-4 text-brand-500", (checking || downloading) && "animate-spin")} />
+                  <span className="text-sm font-bold text-surface-900 dark:text-white uppercase tracking-wider">
+                    {downloading ? "Installing Update" : "Updates"}
+                  </span>
                 </div>
-                {update && (
+                {update && !downloading && (
                   <span className="px-2 py-0.5 rounded-full bg-green-500 text-[10px] font-black text-white uppercase animate-pulse">
                     v{update.version} available
                   </span>
                 )}
               </div>
 
-              {update ? (
+              {downloading ? (
+                <div className="space-y-3">
+                  <div className="w-full bg-surface-200 dark:bg-surface-800 h-2 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="bg-brand-500 h-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress?.percent || 0}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-surface-500 uppercase">
+                    <span>Downloading...</span>
+                    <span>{Math.round(progress?.percent || 0)}%</span>
+                  </div>
+                </div>
+              ) : update ? (
                 <div className="space-y-4">
                   <div className="p-3 rounded-xl bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800">
                     <p className="text-xs font-bold text-surface-400 mb-1 uppercase tracking-widest text-center">Release Notes</p>
@@ -106,7 +123,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                     onClick={installUpdate}
                     className="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-brand-600/20 transition-all flex items-center justify-center gap-2"
                   >
-                    Install & Restart
+                    Update Now
                   </button>
                 </div>
               ) : (

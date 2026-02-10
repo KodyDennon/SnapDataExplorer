@@ -1,62 +1,46 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
-import { ask } from "@tauri-apps/plugin-dialog";
 
-export function Updater({ addToast }: { addToast: (type: "info" | "success" | "warning" | "error", message: string) => void }) {
-  const [checking, setChecking] = useState(false);
+interface UpdaterProps {
+  addToast: (type: "info" | "success" | "warning" | "error", message: string) => void;
+}
+
+export function Updater({ addToast }: UpdaterProps) {
+  const isChecking = useRef(false);
 
   useEffect(() => {
     async function checkForUpdates() {
-      if (checking) return;
-      setChecking(true);
+      if (isChecking.current) return;
+      isChecking.current = true;
 
       try {
         const update = await check();
         if (update) {
-          console.log(`Found update ${update.version} from ${update.date}`);
+          console.log(`Update found: v${update.version}`);
+          addToast("info", `A new update (v${update.version}) is available. Click 'About' in the sidebar to install.`);
           
-          const confirmUpdate = await ask(
-            `A new version (v${update.version}) is available. It is recommended to update for the latest features and security fixes.\n\nRelease Notes:\n${update.body || "No notes provided."}`,
-            { 
-              title: "Update Available",
-              kind: "info",
-              okLabel: "Update Now",
-              cancelLabel: "Later"
-            }
-          );
-          
-          if (confirmUpdate) {
-            addToast("info", "Downloading and installing update... the app will restart automatically.");
-            
-            try {
-              await update.downloadAndInstall();
-              addToast("success", "Update installed! Restarting...");
-              await relaunch();
-            } catch (err) {
-              console.error("Installation failed:", err);
-              addToast("error", `Failed to install update: ${err}`);
-            }
-          }
+          // We could automatically open the about modal, but a toast is less intrusive.
+          // However, for a "great" experience, maybe we should offer a way to open it directly?
+          // Since our toast system is simple, we'll just stick to the sidebar prompt.
         }
       } catch (e) {
-        console.error("Failed to check for updates:", e);
+        console.error("Background update check failed:", e);
       } finally {
-        setChecking(false);
+        isChecking.current = false;
       }
     }
 
-    // Delay check slightly after boot to avoid UI jank
-    const timer = setTimeout(checkForUpdates, 5000);
+    // Background check 10 seconds after launch
+    const timer = setTimeout(checkForUpdates, 10000);
     
-    // Check every 12 hours
-    const interval = setInterval(checkForUpdates, 12 * 60 * 60 * 1000);
+    // Periodically check every 8 hours
+    const interval = setInterval(checkForUpdates, 8 * 60 * 60 * 1000);
     
     return () => {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, []);
+  }, [addToast]);
 
   return null;
 }

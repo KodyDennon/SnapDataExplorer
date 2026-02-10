@@ -1,7 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { generateCrashReport } from "../lib/errorReporter";
 import { AlertCircle, RefreshCw, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "../lib/utils";
 
 interface Props {
   children: ReactNode;
@@ -44,9 +43,11 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return;
     this.setState({ copying: true });
     try {
-      const report = await generateCrashReport(this.state.error, this.state.errorInfo?.componentStack);
+      const report = await generateCrashReport(
+        this.state.error, 
+        this.state.errorInfo?.componentStack || undefined
+      );
       await navigator.clipboard.writeText(report);
-      // We could use a toast here, but we're in a crash state, so simple alert or just changing button text
       setTimeout(() => this.setState({ copying: false }), 2000);
     } catch (err) {
       console.error("Failed to copy report:", err);
