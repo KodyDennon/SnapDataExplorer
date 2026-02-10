@@ -43,6 +43,7 @@ tauri-plugin-updater = "2.10.0"
 tauri-plugin-process = "2.3.1"
 r2d2 = "0.8.10"
 r2d2_sqlite = "0.32.0"
+tauri-plugin-os = "2.3.2"
 
 [dev-dependencies]
 tempfile = "3"

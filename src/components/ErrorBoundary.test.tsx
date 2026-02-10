@@ -8,8 +8,15 @@ function ThrowingComponent({ error }: { error?: Error }) {
 }
 
 describe('ErrorBoundary', () => {
-  // Suppress console.error from React and ErrorBoundary during test
-  const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let consoleSpy: any;
+
+  beforeAll(() => {
+    consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleSpy.mockRestore();
+  });
 
   it('renders children when no error', () => {
     render(
@@ -26,17 +33,25 @@ describe('ErrorBoundary', () => {
         <ThrowingComponent error={new Error('Test crash')} />
       </ErrorBoundary>
     );
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText('System Interruption')).toBeInTheDocument();
   });
 
-  it('displays the error message', () => {
-    render(
+  it('displays the error message after clicking details', async () => {
+    const { getByText, findAllByText } = render(
       <ErrorBoundary>
         <ThrowingComponent error={new Error('Detailed error info')} />
       </ErrorBoundary>
     );
-    expect(screen.getByText('Detailed error info')).toBeInTheDocument();
+    
+    // Check initial state
+    expect(screen.getByText('System Interruption')).toBeInTheDocument();
+    
+    // Click show details
+    const detailsButton = getByText(/Show Technical Details/i);
+    detailsButton.click();
+    
+    // Now the error info should be visible
+    const matches = await findAllByText(/Detailed error info/i);
+    expect(matches.length).toBeGreaterThan(0);
   });
-
-  consoleSpy.mockRestore();
 });

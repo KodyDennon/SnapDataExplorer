@@ -864,6 +864,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![
             detect_exports,
             auto_detect_exports,
