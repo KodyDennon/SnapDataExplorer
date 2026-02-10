@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.6.0...v0.7.0) (2026-02-10)
+
+
+### Features
+
+* trigger signed release with auto-updater ([f1ef2d3](https://github.com/KodyDennon/SnapDataExplorer/commit/f1ef2d3d7486e1099e0b046e18d02f5259b99721))
+
 # [0.6.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.5.1...v0.6.0) (2026-02-10)
 
 
