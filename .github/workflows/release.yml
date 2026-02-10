@@ -37,7 +37,16 @@ jobs:
     steps:
       - name: Resolve tag
         id: tag
-        run: echo "name=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          # Priority: 1. Manual input, 2. ref_name (if it's a tag), 3. fallback to git describe
+          TAG_NAME="${{ inputs.tag || github.event.inputs.tag }}"
+          if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" == "null" ]; then
+            TAG_NAME="${{ github.ref_name }}"
+          fi
+          
+          echo "Resolved Tag: $TAG_NAME"
+          echo "name=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         with:
@@ -76,10 +85,13 @@ jobs:
         run: cargo test
 
       - name: Build
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tagName: ${{ steps.tag.outputs.name }}
+          releaseName: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
+          releaseBody: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
           args: --target ${{ matrix.target }}
 
       - name: Rename and Prepare Artifacts
@@ -89,6 +101,7 @@ jobs:
           VERSION="${{ steps.tag.outputs.name }}"
           VERSION_CLEAN=${VERSION#v} # Remove 'v' prefix if present
           
+          # Adjust bundle path for Tauri v2
           BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
           
           echo "Processing artifacts for ${{ matrix.label }}..."
@@ -114,14 +127,12 @@ jobs:
           echo "Artifacts prepared:"
           ls -lh artifacts/
 
-      - name: Release
+      - name: Release Extra Artifacts
         uses: softprops/action-gh-release@v2
+        if: startsWith(steps.tag.outputs.name, 'v')
         with:
           tag_name: ${{ steps.tag.outputs.name }}
-          name: "Snap Data Explorer ${{ steps.tag.outputs.name }}"
-          body: "See [CHANGELOG.md](https://github.com/KodyDennon/SnapDataExplorer/blob/main/CHANGELOG.md) for details."
           files: artifacts/*
-          draft: false
-          prerelease: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
