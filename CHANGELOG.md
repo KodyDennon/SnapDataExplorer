@@ -1,3 +1,10 @@
+## [0.3.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.3.1...v0.3.2) (2026-02-10)
+
+
+### Bug Fixes
+
+* update Tauri npm packages to match Rust crate versions ([ac3a930](https://github.com/KodyDennon/SnapDataExplorer/commit/ac3a930f4bb7b9301f6a95e8f0355508b97cff58))
+
 ## [0.3.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.3.0...v0.3.1) (2026-02-10)
 
 
