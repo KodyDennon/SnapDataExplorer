@@ -1,3 +1,10 @@
+## [0.7.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.7.0...v0.7.1) (2026-02-10)
+
+
+### Performance Improvements
+
+* implement concurrent DB access, optimized ingestion, and asset virtualization ([a2edfe5](https://github.com/KodyDennon/SnapDataExplorer/commit/a2edfe5d8882be4e81fae6438c55b61908e032c0))
+
 # [0.7.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.6.0...v0.7.0) (2026-02-10)
 
 
