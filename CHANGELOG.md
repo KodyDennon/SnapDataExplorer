@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.3...v0.15.0) (2026-02-10)
+
+
+### Features
+
+* add macOS installation instructions and modal for user guidance ([9778c42](https://github.com/KodyDennon/SnapDataExplorer/commit/9778c42e47afc211819d167aedb073d2f6d32cbe))
+
 ## [0.14.3](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.2...v0.14.3) (2026-02-10)
 
 
