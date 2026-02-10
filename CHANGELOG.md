@@ -1,3 +1,10 @@
+# [0.10.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.9.1...v0.10.0) (2026-02-10)
+
+
+### Features
+
+* implement end-to-end update handling with download progress and polished UX ([6b434b2](https://github.com/KodyDennon/SnapDataExplorer/commit/6b434b2c03a6925936a39760437e4f041aac0518))
+
 ## [0.9.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.9.0...v0.9.1) (2026-02-10)
 
 
