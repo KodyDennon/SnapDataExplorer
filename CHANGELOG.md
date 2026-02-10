@@ -1,3 +1,10 @@
+## [0.14.3](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.2...v0.14.3) (2026-02-10)
+
+
+### Bug Fixes
+
+* update public key for updater plugin in configuration ([6a6c39e](https://github.com/KodyDennon/SnapDataExplorer/commit/6a6c39e121722a996c48e0d14ede8ebbf58e64f5))
+
 ## [0.14.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.1...v0.14.2) (2026-02-10)
 
 
