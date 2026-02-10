@@ -1,3 +1,10 @@
+# [0.11.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.10.0...v0.11.0) (2026-02-10)
+
+
+### Features
+
+* implement dynamic latest release download links and OS detection on homepage ([a3849c3](https://github.com/KodyDennon/SnapDataExplorer/commit/a3849c3c4e83e7393760dfb0f40a6e1f7c73ad46))
+
 # [0.10.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.9.1...v0.10.0) (2026-02-10)
 
 
