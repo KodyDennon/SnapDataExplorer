@@ -1,6 +1,6 @@
 {
   "name": "snap-data-explorer-app",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Privacy-first desktop app for exploring Snapchat data exports",
   "author": "Kody Dennon",
   "license": "SEE LICENSE IN LICENSE",
