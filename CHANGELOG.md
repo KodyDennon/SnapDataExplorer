@@ -1,3 +1,10 @@
+# [0.20.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.19.0...v0.20.0) (2026-02-11)
+
+
+### Features
+
+* optimize build and release process for faster CI and local development ([5a6e2f4](https://github.com/KodyDennon/SnapDataExplorer/commit/5a6e2f44dbe040bfe76d0a34804fd26c443b8277))
+
 # [0.19.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.18.0...v0.19.0) (2026-02-11)
 
 
