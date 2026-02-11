@@ -4,8 +4,13 @@ use crate::models::{ExportSet, ValidationStatus, ExportSourceType};
 use crate::error::AppResult;
 use std::collections::HashMap;
 use regex::Regex;
+use chrono::{DateTime, Utc};
 
 pub struct ExportDetector;
+
+fn std_time_to_chrono(time: std::time::SystemTime) -> DateTime<Utc> {
+    DateTime::<Utc>::from(time)
+}
 
 impl ExportDetector {
     pub fn detect_in_standard_paths() -> AppResult<Vec<ExportSet>> {
@@ -54,7 +59,7 @@ impl ExportDetector {
                         source_paths: vec![path.to_path_buf()],
                         source_type: ExportSourceType::Zip,
                         extraction_path: None,
-                        creation_date: fs::metadata(path).ok().and_then(|m| m.created().ok()).map(chrono::DateTime::from),
+                        creation_date: fs::metadata(path).ok().and_then(|m| m.created().ok()).map(std_time_to_chrono),
                         validation_status: status,
                     }]);
                 }
@@ -125,7 +130,7 @@ impl ExportDetector {
                     source_paths: members.clone(),
                     source_type,
                     extraction_path: None,
-                    creation_date: members.first().and_then(|p| fs::metadata(p).ok()).and_then(|m| m.created().ok()).map(chrono::DateTime::from),
+                    creation_date: members.first().and_then(|p| fs::metadata(p).ok()).and_then(|m| m.created().ok()).map(std_time_to_chrono),
                     validation_status: status,
                 });
             }
@@ -194,7 +199,7 @@ impl ExportDetector {
                 source_paths: vec![path.to_path_buf()],
                 source_type: ExportSourceType::Folder,
                 extraction_path: None,
-                creation_date: fs::metadata(path).ok().and_then(|m| m.created().ok()).map(chrono::DateTime::from),
+                creation_date: fs::metadata(path).ok().and_then(|m| m.created().ok()).map(std_time_to_chrono),
                 validation_status: status,
             });
         }
