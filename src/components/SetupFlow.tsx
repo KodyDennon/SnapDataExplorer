@@ -303,10 +303,10 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
                     <p className="font-bold tracking-widest uppercase text-xs">Accessing File System...</p>
                   </div>
                 ) : detected.length > 0 ? (
-                  <div className="max-h-[380px] overflow-y-auto pr-2 custom-scrollbar space-y-3 p-1">
+                    <div className="max-h-[380px] overflow-y-auto pr-2 custom-scrollbar space-y-3 p-1">
                     {detected.map((exp) => (
                       <Card
-                        key={exp.source_path}
+                        key={exp.id}
                         variant="glass"
                         padding="md"
                         className="group hover:border-brand-500/50 hover:bg-brand-500/5 transition-all duration-300 flex items-center justify-between border-surface-800 backdrop-blur-sm"
@@ -327,15 +327,17 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
                             <h4 className="font-bold text-white group-hover:text-brand-400 transition-colors truncate">
                               {exp.id}
                             </h4>
-                            <p className="text-xs text-surface-500 font-mono mt-1 truncate" title={exp.source_path}>
-                              {exp.source_path}
+                            <p className="text-[10px] text-surface-500 font-mono mt-1 truncate max-w-[300px]" title={exp.source_paths.join(', ')}>
+                              {exp.source_paths.length > 1 
+                                ? `${exp.source_paths.length} components detected` 
+                                : exp.source_paths[0]}
                             </p>
                             <div className="flex gap-2 mt-2">
                               <Badge variant={exp.validation_status === "Valid" ? "success" : "warning"} size="sm">
                                 {exp.validation_status}
                               </Badge>
                               <Badge variant="default" size="sm" className="opacity-60 text-[10px]">
-                                {exp.source_type.toUpperCase()}
+                                {exp.source_type.toUpperCase()} {exp.source_paths.length > 1 && `(${exp.source_paths.length} PARTS)`}
                               </Badge>
                             </div>
                           </div>

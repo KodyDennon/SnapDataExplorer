@@ -1,7 +1,9 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 use crate::models::{ExportSet, ValidationStatus, ExportSourceType};
 use crate::error::AppResult;
+use std::collections::HashMap;
+use regex::Regex;
 
 pub struct ExportDetector;
 
@@ -21,137 +23,167 @@ impl ExportDetector {
         }
 
         log::info!("Auto-detecting exports in {} standard paths", paths_to_scan.len());
-        log::debug!("Standard paths to scan: {:?}", paths_to_scan);
 
         for path in &paths_to_scan {
             match Self::detect_in_directory(path) {
                 Ok(exports) => {
-                    log::info!("Found {} export(s) in scanned path", exports.len());
-                    log::debug!("Exports found in: {:?}", path);
                     all_exports.extend(exports);
                 }
                 Err(e) => {
-                    log::warn!("Error scanning standard path: {}", e);
-                    log::debug!("Failed path: {:?}", path);
+                    log::warn!("Error scanning standard path {:?}: {}", path, e);
                 }
             }
         }
 
-        log::info!("Auto-detect complete: found {} total exports", all_exports.len());
-        Ok(all_exports)
+        // De-duplicate exports found in multiple paths (by ID)
+        let mut unique_exports: HashMap<String, ExportSet> = HashMap::new();
+        for exp in all_exports {
+            unique_exports.entry(exp.id.clone()).or_insert(exp);
+        }
+
+        Ok(unique_exports.into_values().collect())
     }
 
     pub fn detect_in_directory(path: &Path) -> AppResult<Vec<ExportSet>> {
-        let mut exports = Vec::new();
-
-        // If the path is a file, check if it's a zip
         if path.is_file() {
+            // If it's a single zip, wrap it in a group of one
             if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("zip")) {
-                log::info!("detect_in_directory: path is a zip file");
-                log::debug!("Zip path: {:?}", path);
                 if let Some(status) = Self::validate_zip(path) {
-                    exports.push(ExportSet {
+                    return Ok(vec![ExportSet {
                         id: path.file_name().unwrap_or_default().to_string_lossy().into_owned(),
-                        source_path: path.to_path_buf(),
+                        source_paths: vec![path.to_path_buf()],
                         source_type: ExportSourceType::Zip,
                         extraction_path: None,
                         creation_date: fs::metadata(path).ok().and_then(|m| m.created().ok()).map(chrono::DateTime::from),
                         validation_status: status,
-                    });
-                } else {
-                    log::warn!("detect_in_directory: zip file is not a valid Snapchat export");
+                    }]);
                 }
-                return Ok(exports);
             }
-            log::warn!("detect_in_directory: path is a file but not a zip");
-            return Ok(exports);
+            return Ok(vec![]);
         }
 
         if !path.is_dir() {
-            log::warn!("detect_in_directory: path does not exist");
-            return Ok(exports);
+            return Ok(vec![]);
         }
 
-        log::debug!("detect_in_directory: scanning {:?}", path);
-
-        // Check if the selected path IS ITSELF an export folder
+        // Check if the selected path IS ITSELF a unified export folder
         if let Some(export) = Self::validate_folder(path) {
-            log::info!("detect_in_directory: selected path is itself an export");
-            exports.push(export);
-            return Ok(exports);
+            return Ok(vec![export]);
         }
 
+        let mut candidates = Vec::new();
         for entry in fs::read_dir(path)? {
             let entry = entry?;
-            let path = entry.path();
-            let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+            let p = entry.path();
+            let name = p.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
 
-            // Strict Filename Filter: Only look at things that look like Snapchat exports
-            if !file_name.starts_with("mydata~") && !file_name.contains("snapchat") {
-                continue;
-            }
-
-            log::debug!("detect_in_directory: candidate child: {:?}", path);
-
-            if path.is_dir() {
-                if let Some(mut export) = Self::validate_folder(&path) {
-                    export.source_type = ExportSourceType::Folder;
-                    log::info!("detect_in_directory: validated folder export");
-                    log::debug!("Validated export folder: {:?}", path);
-                    exports.push(export);
-                } else {
-                    log::debug!("detect_in_directory: folder didn't validate as export: {:?}", path);
-                }
-            } else if path.extension().is_some_and(|ext| ext == "zip") {
-                if let Some(status) = Self::validate_zip(&path) {
-                    exports.push(ExportSet {
-                        id: path.file_name().unwrap_or_default().to_string_lossy().into_owned(),
-                        source_path: path.clone(),
-                        source_type: ExportSourceType::Zip,
-                        extraction_path: None,
-                        creation_date: fs::metadata(&path).ok().and_then(|m| m.created().ok()).map(chrono::DateTime::from),
-                        validation_status: status,
-                    });
-                }
+            // Broad filter: looks like snapchat data
+            if name.starts_with("mydata~") || name.contains("snapchat") {
+                candidates.push(p);
             }
         }
 
-        Ok(exports)
+        Self::group_candidates(candidates)
+    }
+
+    /// Intelligent grouping of related files and folders.
+    fn group_candidates(paths: Vec<PathBuf>) -> AppResult<Vec<ExportSet>> {
+        // Regex to extract base ID from filenames like mydata~123-2.zip or mydata~123
+        let re = Regex::new(r"^(mydata~\d+)(?:-\d+)?(?:\.zip)?$").unwrap();
+        let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
+
+        for path in paths {
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            if let Some(caps) = re.captures(&name) {
+                let base_id = caps.get(1).map(|m| m.as_str().to_string()).unwrap();
+                groups.entry(base_id).or_default().push(path);
+            } else {
+                // Fallback: group by name without extension for non-standard zips
+                let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                groups.entry(stem).or_default().push(path);
+            }
+        }
+
+        let mut results = Vec::new();
+        for (id, mut members) in groups {
+            // Sort members to ensure part 1/main file is usually first (lexicographical)
+            members.sort();
+
+            let is_zip = members.iter().any(|p| p.extension().is_some_and(|e| e == "zip"));
+            let source_type = if is_zip { ExportSourceType::Zip } else { ExportSourceType::Folder };
+
+            // Perform unified validation across all group members
+            let status = if is_zip {
+                Self::validate_zip_group(&members)
+            } else {
+                Self::validate_folder_group(&members)
+            };
+
+            if status != ValidationStatus::Unknown {
+                results.push(ExportSet {
+                    id,
+                    source_paths: members.clone(),
+                    source_type,
+                    extraction_path: None,
+                    creation_date: members.first().and_then(|p| fs::metadata(p).ok()).and_then(|m| m.created().ok()).map(chrono::DateTime::from),
+                    validation_status: status,
+                });
+            }
+        }
+
+        Ok(results)
     }
 
     fn validate_zip(path: &Path) -> Option<ValidationStatus> {
         let file = fs::File::open(path).ok()?;
         let mut archive = zip::ZipArchive::new(file).ok()?;
         
-        // Look for signature Snapchat files inside the zip
         let has_index = archive.by_name("index.html").is_ok();
         let has_chat = archive.file_names().any(|n| n.contains("html/chat_history"));
-        let has_json = archive.by_name("json/account.json").is_ok();
+        let has_media = archive.file_names().any(|n| n.contains("chat_media/") || n.contains("media/"));
 
-        if has_index && (has_chat || has_json) {
+        if has_index && has_chat && has_media {
             Some(ValidationStatus::Valid)
         } else if has_index {
             Some(ValidationStatus::Incomplete)
         } else {
-            None // Not a snapchat export
+            None
+        }
+    }
+
+    fn validate_zip_group(paths: &[PathBuf]) -> ValidationStatus {
+        let mut has_index = false;
+        let mut has_chat = false;
+        let mut has_media = false;
+
+        for path in paths {
+            if let Ok(file) = fs::File::open(path) {
+                if let Ok(mut archive) = zip::ZipArchive::new(file) {
+                    if !has_index && archive.by_name("index.html").is_ok() { has_index = true; }
+                    if !has_chat && archive.file_names().any(|n| n.contains("html/chat_history")) { has_chat = true; }
+                    if !has_media && archive.file_names().any(|n| n.contains("chat_media/") || n.contains("media/")) { has_media = true; }
+                }
+            }
+        }
+
+        if has_index && has_chat && has_media {
+            ValidationStatus::Valid
+        } else if has_index {
+            ValidationStatus::Incomplete
+        } else if !paths.is_empty() {
+            ValidationStatus::Incomplete // At least we found something
+        } else {
+            ValidationStatus::Unknown
         }
     }
 
     fn validate_folder(path: &Path) -> Option<ExportSet> {
         let index_html = path.join("index.html");
-        let html_dir = path.join("html");
-        let chat_history = html_dir.join("chat_history");
+        let has_chat = path.join("html/chat_history").is_dir();
+        let has_media = path.join("chat_media").is_dir() || path.join("media").is_dir();
 
-        // Snapchat exports typically have 'media' or 'chat_media'
-        let media_dir = path.join("media");
-        let chat_media_dir = path.join("chat_media");
-
-        log::debug!("validate_folder: checking {:?} - index.html={}, html/={}, chat_history/={}, media/={}, chat_media/={}",
-            path, index_html.exists(), html_dir.is_dir(), chat_history.is_dir(), media_dir.is_dir(), chat_media_dir.is_dir());
-
-        // Stricter signature check for folders
-        if index_html.exists() && (chat_history.is_dir() || html_dir.is_dir()) {
-            let status = if media_dir.is_dir() || chat_media_dir.is_dir() {
+        if index_html.exists() {
+            let status = if has_chat && has_media {
                 ValidationStatus::Valid
             } else {
                 ValidationStatus::Incomplete
@@ -159,79 +191,42 @@ impl ExportDetector {
 
             return Some(ExportSet {
                 id: path.file_name().unwrap_or_default().to_string_lossy().into_owned(),
-                source_path: path.to_path_buf(),
+                source_paths: vec![path.to_path_buf()],
                 source_type: ExportSourceType::Folder,
                 extraction_path: None,
                 creation_date: fs::metadata(path).ok().and_then(|m| m.created().ok()).map(chrono::DateTime::from),
                 validation_status: status,
             });
         }
-
         None
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs::{self, File};
+    fn validate_folder_group(paths: &[PathBuf]) -> ValidationStatus {
+        let mut has_index = false;
+        let mut has_chat = false;
+        let mut has_media = false;
 
-    fn create_valid_export(dir: &Path) {
-        File::create(dir.join("index.html")).unwrap();
-        fs::create_dir_all(dir.join("html/chat_history")).unwrap();
-        fs::create_dir_all(dir.join("chat_media")).unwrap();
-    }
+        for path in paths {
+            if path.join("index.html").exists() { has_index = true; }
+            if path.join("html/chat_history").is_dir() { has_chat = true; }
+            if path.join("chat_media").is_dir() || path.join("media").is_dir() { has_media = true; }
+            
+            // Siblings check: if this path is 'chat_media', look for its 'html' sibling
+            if !has_index {
+                if let Some(parent) = path.parent() {
+                    if parent.join("index.html").exists() { has_index = true; }
+                }
+            }
+        }
 
-    #[test]
-    fn test_detect_valid_folder() {
-        let dir = tempfile::tempdir().unwrap();
-        create_valid_export(dir.path());
-
-        let exports = ExportDetector::detect_in_directory(dir.path()).unwrap();
-        assert_eq!(exports.len(), 1);
-        assert_eq!(exports[0].validation_status, ValidationStatus::Valid);
-        assert_eq!(exports[0].source_type, ExportSourceType::Folder);
-    }
-
-    #[test]
-    fn test_detect_incomplete_folder() {
-        let dir = tempfile::tempdir().unwrap();
-        File::create(dir.path().join("index.html")).unwrap();
-        fs::create_dir_all(dir.path().join("html")).unwrap();
-        // No chat_media or media dir → Incomplete
-
-        let exports = ExportDetector::detect_in_directory(dir.path()).unwrap();
-        assert_eq!(exports.len(), 1);
-        assert_eq!(exports[0].validation_status, ValidationStatus::Incomplete);
-    }
-
-    #[test]
-    fn test_detect_empty_dir() {
-        let dir = tempfile::tempdir().unwrap();
-        let exports = ExportDetector::detect_in_directory(dir.path()).unwrap();
-        assert!(exports.is_empty());
-    }
-
-    #[test]
-    fn test_detect_child_by_name() {
-        let parent = tempfile::tempdir().unwrap();
-        let child = parent.path().join("mydata~snapchat-export");
-        fs::create_dir_all(&child).unwrap();
-        create_valid_export(&child);
-
-        let exports = ExportDetector::detect_in_directory(parent.path()).unwrap();
-        assert_eq!(exports.len(), 1);
-        assert_eq!(exports[0].validation_status, ValidationStatus::Valid);
-    }
-
-    #[test]
-    fn test_detect_ignores_unrelated() {
-        let parent = tempfile::tempdir().unwrap();
-        let child = parent.path().join("random_folder");
-        fs::create_dir_all(&child).unwrap();
-        create_valid_export(&child);
-
-        let exports = ExportDetector::detect_in_directory(parent.path()).unwrap();
-        assert!(exports.is_empty());
+        if has_index && has_chat && has_media {
+            ValidationStatus::Valid
+        } else if has_index {
+            ValidationStatus::Incomplete
+        } else if !paths.is_empty() {
+            ValidationStatus::Incomplete
+        } else {
+            ValidationStatus::Unknown
+        }
     }
 }

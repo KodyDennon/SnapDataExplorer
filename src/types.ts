@@ -1,6 +1,6 @@
 export interface ExportSet {
   id: string;
-  source_path: string;
+  source_paths: string[];
   source_type: "Zip" | "Folder";
   extraction_path: string | null;
   creation_date: string | null;

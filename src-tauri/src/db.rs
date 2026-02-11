@@ -51,7 +51,7 @@ impl DatabaseManager {
             "
             CREATE TABLE IF NOT EXISTS exports (
                 id TEXT PRIMARY KEY,
-                source_path TEXT NOT NULL,
+                source_paths TEXT NOT NULL,
                 source_type TEXT NOT NULL DEFAULT 'Folder',
                 creation_date TEXT,
                 validation_status TEXT NOT NULL
@@ -125,7 +125,7 @@ impl DatabaseManager {
     /// Run schema migrations for existing databases
     fn run_migrations(&self) -> AppResult<()> {
         let conn = self.conn();
-        // Add source_type column if it doesn't exist (for pre-existing DBs)
+        // 1. Add source_type column if it doesn't exist
         let has_source_type: bool = conn
             .prepare("SELECT COUNT(*) FROM pragma_table_info('exports') WHERE name = 'source_type'")?
             .query_row([], |row| row.get::<_, i32>(0))
@@ -137,7 +137,30 @@ impl DatabaseManager {
             conn.execute_batch("ALTER TABLE exports ADD COLUMN source_type TEXT NOT NULL DEFAULT 'Folder';")?;
         }
 
-        // Add memory download columns
+        // 2. Migrate source_path to source_paths
+        let has_source_paths: bool = conn
+            .prepare("SELECT COUNT(*) FROM pragma_table_info('exports') WHERE name = 'source_paths'")?
+            .query_row([], |row| row.get::<_, i32>(0))
+            .unwrap_or(0)
+            > 0;
+
+        if !has_source_paths {
+            log::info!("Migration: converting source_path to source_paths");
+            // Add the new column
+            conn.execute_batch("ALTER TABLE exports ADD COLUMN source_paths TEXT;")?;
+            
+            // For any existing rows, wrap the single source_path in a JSON array
+            let mut stmt = conn.prepare("SELECT id, source_path FROM exports WHERE source_paths IS NULL")?;
+            let rows: Vec<(String, String)> = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+                .collect::<std::result::Result<Vec<_>, _>>()?;
+            
+            for (id, path) in rows {
+                let paths_json = serde_json::to_string(&vec![path]).unwrap_or_else(|_| "[]".to_string());
+                conn.execute("UPDATE exports SET source_paths = ?1 WHERE id = ?2", params![paths_json, id])?;
+            }
+        }
+
+        // 3. Add memory download columns
         let has_download_status: bool = conn
             .prepare("SELECT COUNT(*) FROM pragma_table_info('memories') WHERE name = 'download_status'")?
             .query_row([], |row| row.get::<_, i32>(0))
@@ -182,11 +205,13 @@ impl DatabaseManager {
             ExportSourceType::Zip => "Zip",
             ExportSourceType::Folder => "Folder",
         };
+        let paths_json = serde_json::to_string(&export.source_paths).unwrap_or_else(|_| "[]".to_string());
+        
         self.conn().execute(
-            "INSERT OR REPLACE INTO exports (id, source_path, source_type, creation_date, validation_status) VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT OR REPLACE INTO exports (id, source_paths, source_type, creation_date, validation_status) VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 export.id,
-                export.source_path.to_string_lossy(),
+                paths_json,
                 source_type_str,
                 export.creation_date.map(|d| d.to_rfc3339()),
                 status_str
@@ -394,10 +419,10 @@ impl DatabaseManager {
     pub fn get_exports(&self) -> AppResult<Vec<ExportSet>> {
         let conn = self.conn();
         let mut stmt =
-            conn.prepare("SELECT id, source_path, source_type, creation_date, validation_status FROM exports")?;
+            conn.prepare("SELECT id, source_paths, source_type, creation_date, validation_status FROM exports")?;
 
         let export_iter = stmt.query_map([], |row| {
-            let source_path_str: String = row.get(1)?;
+            let source_paths_json: String = row.get(1)?;
             let source_type_str: String = row.get::<_, String>(2).unwrap_or_else(|_| "Folder".to_string());
             let creation_date_str: Option<String> = row.get(3)?;
             let validation_status_str: String = row.get(4)?;
@@ -414,9 +439,11 @@ impl DatabaseManager {
                 _ => ValidationStatus::Unknown,
             };
 
+            let source_paths: Vec<PathBuf> = serde_json::from_str(&source_paths_json).unwrap_or_default();
+
             Ok(ExportSet {
                 id: row.get(0)?,
-                source_path: PathBuf::from(source_path_str),
+                source_paths,
                 source_type,
                 extraction_path: None,
                 creation_date: creation_date_str
@@ -932,7 +959,7 @@ mod tests {
         let db = test_db();
         let export = ExportSet {
             id: "test-export".to_string(),
-            source_path: PathBuf::from("/tmp/test"),
+            source_paths: vec![PathBuf::from("/tmp/test")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,
@@ -951,7 +978,7 @@ mod tests {
         let db = test_db();
         let export = ExportSet {
             id: "zip-export".to_string(),
-            source_path: PathBuf::from("/tmp/test.zip"),
+            source_paths: vec![PathBuf::from("/tmp/test.zip")],
             source_type: ExportSourceType::Zip,
             extraction_path: None,
             creation_date: Some(chrono::Utc::now()),
@@ -976,7 +1003,7 @@ mod tests {
         }];
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
-            source_path: PathBuf::from("/tmp"),
+            source_paths: vec![PathBuf::from("/tmp")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,
@@ -995,7 +1022,7 @@ mod tests {
         let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
-            source_path: PathBuf::from("/tmp"),
+            source_paths: vec![PathBuf::from("/tmp")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,
@@ -1043,7 +1070,7 @@ mod tests {
         let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
-            source_path: PathBuf::from("/tmp"),
+            source_paths: vec![PathBuf::from("/tmp")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,
@@ -1079,7 +1106,7 @@ mod tests {
         let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
-            source_path: PathBuf::from("/tmp"),
+            source_paths: vec![PathBuf::from("/tmp")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,
@@ -1096,7 +1123,7 @@ mod tests {
         let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
-            source_path: PathBuf::from("/tmp"),
+            source_paths: vec![PathBuf::from("/tmp")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,
@@ -1128,7 +1155,7 @@ mod tests {
         let db = test_db();
         db.insert_export(&ExportSet {
             id: "e1".to_string(),
-            source_path: PathBuf::from("/tmp"),
+            source_paths: vec![PathBuf::from("/tmp")],
             source_type: ExportSourceType::Folder,
             extraction_path: None,
             creation_date: None,

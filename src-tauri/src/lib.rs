@@ -67,7 +67,7 @@ async fn auto_detect_exports() -> AppResult<Vec<ExportSet>> {
 #[tauri::command]
 async fn process_export(export: ExportSet, app_handle: tauri::AppHandle) -> AppResult<()> {
     log::info!("process_export: starting (type: {:?})", export.source_type);
-    log::debug!("process_export: source path: {:?}", export.source_path);
+    log::debug!("process_export: {} source path(s)", export.source_paths.len());
 
     let app_data = app_handle
         .path()
@@ -83,11 +83,12 @@ async fn process_export(export: ExportSet, app_handle: tauri::AppHandle) -> AppR
     let handle = app_handle.clone();
     let original_export = export.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        // Extract zip if needed (heavy I/O)
+        // Extract zips if needed (heavy I/O)
         let working_path = if original_export.source_type == ExportSourceType::Zip {
-            ZipExtractor::extract(&original_export.source_path, &working_dir, &original_export.id, &handle)?
+            ZipExtractor::extract(&original_export.source_paths, &working_dir, &original_export.id, &handle)?
         } else {
-            original_export.source_path.clone()
+            // For folders, we use the first path as the primary (usually the one containing index.html)
+            original_export.source_paths.first().cloned().ok_or_else(|| AppError::Generic("No source paths provided".into()))?
         };
 
         tauri::async_runtime::block_on(reconstruct_from_path(original_export, working_path, handle))
@@ -698,16 +699,17 @@ async fn reimport_data(app_handle: tauri::AppHandle) -> AppResult<()> {
         None => return Err(AppError::Generic("No existing import to reimport from.".into())),
     };
 
-    // Verify the source path still exists before wiping
-    if !export.source_path.exists() {
-        return Err(AppError::Generic(format!(
-            "Original export path no longer exists: {}. Cannot reimport.",
-            export.source_path.display()
-        )));
+    // Verify the source paths still exist before wiping
+    for path in &export.source_paths {
+        if !path.exists() {
+            return Err(AppError::Generic(format!(
+                "Original export component no longer exists: {}. Cannot reimport.",
+                path.display()
+            )));
+        }
     }
 
-    log::info!("reimport_data: reimporting (type: {:?})", export.source_type);
-    log::debug!("reimport_data: source path: {:?}", export.source_path);
+    log::info!("reimport_data: reimporting (type: {:?}, {} parts)", export.source_type, export.source_paths.len());
 
     // 2. Wipe the DB
     let path = db_path(&app_handle)?;

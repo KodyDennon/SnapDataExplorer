@@ -19,9 +19,9 @@ pub enum ExportSourceType {
 pub struct ExportSet {
     /// Unique identifier (typically the folder/file name).
     pub id: String,
-    /// Original path to the export (zip file or folder).
-    pub source_path: PathBuf,
-    /// Whether this was imported from a zip or folder.
+    /// Original paths to the export components (zip files or folders).
+    pub source_paths: Vec<PathBuf>,
+    /// Whether this was imported from zips or folders.
     pub source_type: ExportSourceType,
     /// Path where a zip was extracted to (if applicable).
     pub extraction_path: Option<PathBuf>,

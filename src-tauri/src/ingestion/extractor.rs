@@ -9,87 +9,81 @@ pub struct ZipExtractor;
 
 impl ZipExtractor {
     pub fn extract(
-        zip_path: &Path,
+        zip_paths: &[PathBuf],
         target_dir: &Path,
         export_id: &str,
         app_handle: &AppHandle
     ) -> AppResult<PathBuf> {
-        log::info!("ZipExtractor: starting extraction");
-        log::debug!("ZipExtractor: {:?} -> {:?}", zip_path, target_dir);
-
-        if !zip_path.exists() {
-            return Err(AppError::Generic(format!("Zip file not found: {}", zip_path.display())));
-        }
-
-        let file = fs::File::open(zip_path)?;
-        let mut archive = ZipArchive::new(file).map_err(|e| {
-            log::error!("ZipExtractor: failed to open zip: {}", e);
-            AppError::Parsing(format!("Invalid zip file: {}", e))
-        })?;
-
+        log::info!("ZipExtractor: starting extraction of {} part(s)", zip_paths.len());
+        
         let extraction_path = target_dir.join(export_id);
         if !extraction_path.exists() {
             fs::create_dir_all(&extraction_path)?;
         }
 
-        let total_files = archive.len();
-        log::info!("ZipExtractor: archive contains {} entries", total_files);
+        let total_parts = zip_paths.len();
+        let mut total_extracted_files = 0u64;
 
-        if total_files == 0 {
-            return Err(AppError::Validation("Zip archive is empty".to_string()));
-        }
+        for (part_idx, zip_path) in zip_paths.iter().enumerate() {
+            log::info!("ZipExtractor: extracting part {}/{}: {:?}", part_idx + 1, total_parts, zip_path);
 
-        const MAX_EXTRACTED_SIZE: u64 = 5 * 1024 * 1024 * 1024; // 5GB limit
-        let mut extracted_count = 0u64;
-        let mut total_bytes: u64 = 0;
+            if !zip_path.exists() {
+                log::warn!("ZipExtractor: zip part not found: {:?}", zip_path);
+                continue;
+            }
 
-        for i in 0..total_files {
-            let mut file = archive.by_index(i).map_err(|e| {
-                AppError::Parsing(format!("Failed to read zip entry {}: {}", i, e))
+            let file = fs::File::open(zip_path)?;
+            let mut archive = ZipArchive::new(file).map_err(|e| {
+                AppError::Parsing(format!("Invalid zip file {:?}: {}", zip_path, e))
             })?;
 
-            total_bytes += file.size();
-            if total_bytes > MAX_EXTRACTED_SIZE {
-                return Err(AppError::Validation(format!(
-                    "Zip extraction would exceed {}GB size limit. Archive may be too large or corrupted.",
-                    MAX_EXTRACTED_SIZE / (1024 * 1024 * 1024)
-                )));
-            }
+            let total_files_in_part = archive.len();
+            
+            for i in 0..total_files_in_part {
+                let mut file = archive.by_index(i).map_err(|e| {
+                    AppError::Parsing(format!("Failed to read zip entry {} in {:?}: {}", i, zip_path, e))
+                })?;
 
-            let outpath = match file.enclosed_name() {
-                Some(path) => extraction_path.join(path),
-                None => {
-                    log::warn!("ZipExtractor: skipping entry with unsafe path at index {}", i);
-                    continue;
-                }
-            };
+                let outpath = match file.enclosed_name() {
+                    Some(path) => extraction_path.join(path),
+                    None => continue,
+                };
 
-            if file.name().ends_with('/') {
-                fs::create_dir_all(&outpath)?;
-            } else {
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() {
-                        fs::create_dir_all(p)?;
+                if file.name().ends_with('/') {
+                    fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        if !p.exists() {
+                            fs::create_dir_all(p)?;
+                        }
                     }
+                    
+                    // "Newest wins": If file exists, we could check timestamps, 
+                    // but usually, later parts in multi-part zips are the intended ones
+                    // or contain different files entirely.
+                    let mut outfile = fs::File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
+                    total_extracted_files += 1;
                 }
-                let mut outfile = fs::File::create(&outpath)?;
-                std::io::copy(&mut file, &mut outfile)?;
-                extracted_count += 1;
-            }
 
-            if i % 100 == 0 || i == total_files - 1 {
-                let progress = i as f32 / total_files as f32;
-                let _ = app_handle.emit("ingestion-progress", IngestionProgress {
-                    export_id: export_id.to_string(),
-                    current_step: "Extracting".to_string(),
-                    progress: progress * 0.10, // Extraction is ~10% of total pipeline
-                    message: format!("Extracting file {} of {}...", i + 1, total_files),
-                });
+                if i % 100 == 0 || i == total_files_in_part - 1 {
+                    let part_progress = i as f32 / total_files_in_part as f32;
+                    let total_progress = (part_idx as f32 + part_progress) / total_parts as f32;
+                    
+                    let _ = app_handle.emit("ingestion-progress", IngestionProgress {
+                        export_id: export_id.to_string(),
+                        current_step: "Extracting".to_string(),
+                        progress: total_progress * 0.10, // Extraction is ~10% of pipeline
+                        message: format!(
+                            "Extracting part {} of {} (file {} of {})...", 
+                            part_idx + 1, total_parts, i + 1, total_files_in_part
+                        ),
+                    });
+                }
             }
         }
 
-        log::info!("ZipExtractor: extracted {} files", extracted_count);
-        log::debug!("ZipExtractor: extraction path: {:?}", extraction_path);
+        log::info!("ZipExtractor: extraction complete. Total files: {}", total_extracted_files);
         Ok(extraction_path)
     }
 }
