@@ -1,3 +1,14 @@
+## [0.23.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.22.0...v0.23.0) (2026-02-11)
+
+### Features
+
+* enhance in-app release notes display and verify automated changelogs ([6db6087](https://github.com/KodyDennon/SnapDataExplorer/commit/6db6087ecbb811843145bb66b9735cf9b59cca27))
+* implement rich automated changelogs and codify release standards in docs ([c2b43b7](https://github.com/KodyDennon/SnapDataExplorer/commit/c2b43b75abeaa0eac0de86aefffce77a7a27f4ed))
+
+### Bug Fixes
+
+* resolve semantic-release failure by adding missing preset and robustifying changelog extraction ([0bbda39](https://github.com/KodyDennon/SnapDataExplorer/commit/0bbda39825fe4b4e20264f683f7656cd13121897))
+
 # [0.22.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.21.0...v0.22.0) (2026-02-11)
 
 
