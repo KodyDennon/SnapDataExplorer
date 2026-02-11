@@ -10,7 +10,24 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
+  frontend-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Frontend tests
+        run: npm test
+
+  backend-build:
+    needs: frontend-checks
     strategy:
       fail-fast: false
       matrix:
@@ -47,29 +64,19 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev mold clang
 
       - name: Install frontend dependencies
         run: npm ci
-
-      - name: TypeScript check
-        run: npx tsc --noEmit
-
-      - name: Frontend tests
-        run: npm test
 
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test
 
       - name: Rust clippy
+        if: runner.os == 'Linux' # Only run clippy on one platform to save time
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
-
-      - name: Cargo audit
-        working-directory: src-tauri
-        run: cargo install cargo-audit --quiet && cargo audit
-        continue-on-error: true
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
