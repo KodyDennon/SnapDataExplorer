@@ -171,6 +171,10 @@ jobs:
           fi
           echo "name=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -183,9 +187,21 @@ jobs:
           VERSION="${TAG_VERSION#v}"
           REPO_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}"
           
+          # Extract notes from CHANGELOG.md for the specific version
+          # It looks for the section between the current version header and the next version header
+          # Format: ## [0.21.0](...) (Date)
+          EXTRACTED_NOTES=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '1d;$d' | sed '$d')
+          
+          if [ -z "$EXTRACTED_NOTES" ]; then
+            EXTRACTED_NOTES="Release $TAG_VERSION. See CHANGELOG.md for full details."
+          fi
+
+          echo "Extracted Notes:"
+          echo "$EXTRACTED_NOTES"
+
           jq -n \
             --arg ver "$VERSION" \
-            --arg notes "Release $TAG_VERSION. See CHANGELOG.md for details." \
+            --arg notes "$EXTRACTED_NOTES" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             '{version: $ver, notes: $notes, pub_date: $date, platforms: {}}' > latest.json
 
