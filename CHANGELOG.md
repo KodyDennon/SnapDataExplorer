@@ -1,3 +1,10 @@
+## [0.16.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.16.0...v0.16.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* improve dashboard loading state and stabilize search tests ([69bf158](https://github.com/KodyDennon/SnapDataExplorer/commit/69bf1583d0b9d80af2be5852301f448e62186f15))
+
 # [0.16.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.15.0...v0.16.0) (2026-02-11)
 
 
