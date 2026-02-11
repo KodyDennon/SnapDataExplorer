@@ -104,7 +104,7 @@ export function Sidebar({
 
   useEffect(() => {
     loadExports();
-  }, [activePage, refreshTrigger]);
+  }, [refreshTrigger]);
 
   function handleResetClick() {
     if (confirmReset) {

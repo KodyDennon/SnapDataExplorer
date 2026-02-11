@@ -4,6 +4,7 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use kuchikiki::traits::*;
 use serde_json::Value;
 use std::fs;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -191,8 +192,8 @@ pub struct PersonParser;
 
 impl PersonParser {
     pub fn parse_friends_json(path: &Path) -> AppResult<Vec<Person>> {
-        let content = fs::read_to_string(path)?;
-        let json: Value = serde_json::from_str(&content)?;
+        let file = fs::File::open(path)?;
+        let json: Value = serde_json::from_reader(BufReader::new(file))?;
         let mut people = Vec::new();
 
         let categories = [
@@ -227,8 +228,8 @@ pub struct MemoryParser;
 
 impl MemoryParser {
     pub fn parse_memories_json(path: &Path, export_id: &str) -> AppResult<Vec<Memory>> {
-        let content = fs::read_to_string(path)?;
-        let json: Value = serde_json::from_str(&content)?;
+        let file = fs::File::open(path)?;
+        let json: Value = serde_json::from_reader(BufReader::new(file))?;
         let mut memories = Vec::new();
 
         if let Some(saved_media) = json.get("Saved Media").and_then(|v| v.as_array()) {
@@ -305,8 +306,8 @@ impl ChatJsonParser {
     /// Returns Vec<(conversation_id, Vec<Event>)> with media_ids stored in event metadata.
     pub fn parse_chat_history_json(path: &Path) -> AppResult<Vec<(String, Vec<Event>)>> {
         log::debug!("ChatJsonParser: parsing {:?}", path);
-        let content = fs::read_to_string(path)?;
-        let json: Value = serde_json::from_str(&content)?;
+        let file = fs::File::open(path)?;
+        let json: Value = serde_json::from_reader(BufReader::new(file))?;
         let mut result = Vec::new();
         let mut total_events = 0;
         let mut media_id_count = 0;
@@ -418,8 +419,8 @@ pub struct SnapHistoryParser;
 
 impl SnapHistoryParser {
     pub fn parse_snap_history_json(path: &Path) -> AppResult<Vec<(String, Vec<Event>)>> {
-        let content = fs::read_to_string(path)?;
-        let json: Value = serde_json::from_str(&content)?;
+        let file = fs::File::open(path)?;
+        let json: Value = serde_json::from_reader(BufReader::new(file))?;
         let mut result = Vec::new();
 
         if let Some(obj) = json.as_object() {

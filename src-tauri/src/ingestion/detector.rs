@@ -1,10 +1,15 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::sync::LazyLock;
 use crate::models::{ExportSet, ValidationStatus, ExportSourceType};
 use crate::error::AppResult;
 use std::collections::HashMap;
 use regex::Regex;
 use chrono::{DateTime, Utc};
+
+static EXPORT_ID_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(mydata~\d+)(?:-\d+)?(?:\.zip)?$").unwrap()
+});
 
 pub struct ExportDetector;
 
@@ -93,13 +98,11 @@ impl ExportDetector {
 
     /// Intelligent grouping of related files and folders.
     fn group_candidates(paths: Vec<PathBuf>) -> AppResult<Vec<ExportSet>> {
-        // Regex to extract base ID from filenames like mydata~123-2.zip or mydata~123
-        let re = Regex::new(r"^(mydata~\d+)(?:-\d+)?(?:\.zip)?$").unwrap();
         let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
 
         for path in paths {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
-            if let Some(caps) = re.captures(&name) {
+            if let Some(caps) = EXPORT_ID_RE.captures(&name) {
                 let base_id = caps.get(1).map(|m| m.as_str().to_string()).unwrap();
                 groups.entry(base_id).or_default().push(path);
             } else {

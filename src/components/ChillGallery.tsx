@@ -70,11 +70,12 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
         loadInitial();
     }, []);
 
-    // Ambient Auto-Scrolling
+    // Ambient Auto-Scrolling — only run the rAF loop when active
     useEffect(() => {
+        if (!isAutoScrolling) return;
         let animationFrame: number;
         const scroll = () => {
-            if (isAutoScrolling && scrollRef.current) {
+            if (scrollRef.current) {
                 scrollRef.current.scrollTo({
                     top: scrollRef.current.getScrollTop() + 0.4,
                     behavior: 'auto'

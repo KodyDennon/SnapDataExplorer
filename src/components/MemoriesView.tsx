@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { VirtuosoGrid } from 'react-virtuoso';
+import { motion } from 'framer-motion';
 import {
     Cloud,
     Download,
@@ -275,39 +276,38 @@ export const MemoriesView: React.FC = () => {
                     </div>
 
                     {/* Grid */}
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-10">
-                        <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                            <AnimatePresence>
-                                {filteredMemories.map((memory) => {
-                                    return (
-                                        <MediaThumbnail
-                                            key={memory.id}
-                                            path={memory.media_path || undefined}
-                                            remoteUrl={memory.download_url || undefined}
-                                            mediaType={memory.media_type}
-                                            status={memory.download_status}
-                                            progress={progress[memory.id]}
-                                            timestamp={memory.timestamp}
-                                            isSelected={selectedIds.has(memory.id)}
-                                            onSelect={(selected) => {
-                                                const next = new Set(selectedIds);
-                                                if (selected) next.add(memory.id);
-                                                else next.delete(memory.id);
-                                                setSelectedIds(next);
-                                            }}
-                                            onClick={() => setViewerIndex(memories.indexOf(memory))}
-                                            className="animate-in fade-in zoom-in duration-300"
-                                        />
-                                    );
-                                })}
-                            </AnimatePresence>
-                        </div>
-
-                        {!loading && filteredMemories.length === 0 && (
+                    <div className="flex-1 overflow-hidden pb-10">
+                        {!loading && filteredMemories.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-64 text-white/20">
                                 <AlertCircle className="w-16 h-16 mb-4 opacity-50" />
                                 <p className="font-bold text-lg">No memories found matching your filters.</p>
                             </div>
+                        ) : (
+                            <VirtuosoGrid
+                                style={{ height: "100%", width: "100%" }}
+                                data={filteredMemories}
+                                overscan={400}
+                                listClassName="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pr-2"
+                                itemContent={(_index, memory) => (
+                                    <MediaThumbnail
+                                        key={memory.id}
+                                        path={memory.media_path || undefined}
+                                        remoteUrl={memory.download_url || undefined}
+                                        mediaType={memory.media_type}
+                                        status={memory.download_status}
+                                        progress={progress[memory.id]}
+                                        timestamp={memory.timestamp}
+                                        isSelected={selectedIds.has(memory.id)}
+                                        onSelect={(selected) => {
+                                            const next = new Set(selectedIds);
+                                            if (selected) next.add(memory.id);
+                                            else next.delete(memory.id);
+                                            setSelectedIds(next);
+                                        }}
+                                        onClick={() => setViewerIndex(memories.indexOf(memory))}
+                                    />
+                                )}
+                            />
                         )}
                     </div>
                 </div>

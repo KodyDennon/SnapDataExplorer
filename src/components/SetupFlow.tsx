@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ExportSet, IngestionProgress, IngestionResult } from "../types";
@@ -18,6 +18,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<IngestionResult | null>(null);
+  const scanInFlight = useRef(false);
 
   useEffect(() => {
     const unlisten = listen<IngestionResult>("ingestion-result", (event) => {
@@ -27,6 +28,8 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
   }, []);
 
   async function handleScan() {
+    if (scanInFlight.current) return;
+    scanInFlight.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -39,6 +42,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
       setError(friendlyError(String(e)));
     } finally {
       setLoading(false);
+      scanInFlight.current = false;
     }
   }
 

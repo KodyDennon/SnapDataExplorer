@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
-import { Event as Message, MessagePage, Conversation, MediaViewerItem } from "../types";
+import { Event as Message, MessagePage, MediaViewerItem } from "../types";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Toast } from "../hooks/useToast";
@@ -43,7 +43,7 @@ const MessageItem = React.memo(({
   showDateSep,
   onOpenMedia,
   markFailed,
-  failedMedia,
+  isMediaFailed,
   addToast
 }: {
   msg: Message,
@@ -51,7 +51,7 @@ const MessageItem = React.memo(({
   showDateSep: boolean,
   onOpenMedia: (ref: string) => void,
   markFailed: (key: string) => void,
-  failedMedia: Set<string>,
+  isMediaFailed: (key: string) => boolean,
   addToast: (type: Toast["type"], message: string) => void
 }) => {
   // Pre-compute media sources to avoid logic in render
@@ -122,7 +122,7 @@ const MessageItem = React.memo(({
                   {msg.media_references.map((ref_, i) => {
                     const mediaKey = `${msg.id}-${i}`;
                     const src = mediaSources[i];
-                    if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
+                    if (isMediaFailed(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
                     return (
                       <div
                         key={i}
@@ -174,7 +174,7 @@ const MessageItem = React.memo(({
                   {msg.media_references.map((ref_, i) => {
                     const mediaKey = `${msg.id}-snap-${i}`;
                     const src = mediaSources[i];
-                    if (failedMedia.has(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
+                    if (isMediaFailed(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
                     return (
                       <div
                         key={i}
@@ -244,7 +244,7 @@ const MessageItem = React.memo(({
                 {msg.media_references.map((_, i) => {
                   const mediaKey = `${msg.id}-sticker-${i}`;
                   const src = mediaSources[i];
-                  if (failedMedia.has(mediaKey)) return null;
+                  if (isMediaFailed(mediaKey)) return null;
                   return (
                     <img
                       key={i}
@@ -295,7 +295,8 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const [jumpDate, setJumpDate] = useState("");
   const [exporting, setExporting] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [failedMedia, setFailedMedia] = useState<Set<string>>(new Set());
+  const failedMediaRef = useRef<Set<string>>(new Set());
+  const [failedMediaVersion, setFailedMediaVersion] = useState(0);
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
@@ -357,18 +358,16 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
 
   useEffect(() => {
     setDisplayName(null);
-    invoke<Conversation[]>("get_conversations").then((convos) => {
-      const match = convos.find((c) => c.id === conversationId);
-      if (match?.display_name) {
-        setDisplayName(match.display_name);
-      }
-    }).catch(() => { });
+    invoke<string | null>("get_conversation_name", { conversationId })
+      .then((name) => { if (name) setDisplayName(name); })
+      .catch(() => { });
   }, [conversationId]);
 
   useEffect(() => {
     setMessages([]);
     setInitialLoad(true);
-    setFailedMedia(new Set());
+    failedMediaRef.current = new Set();
+    setFailedMediaVersion(0);
     loadMessages();
   }, [conversationId, loadMessages]);
 
@@ -426,8 +425,15 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   }
 
   const markFailed = useCallback((key: string) => {
-    setFailedMedia(prev => { const next = new Set(prev); next.add(key); return next; });
+    if (!failedMediaRef.current.has(key)) {
+      failedMediaRef.current.add(key);
+      setFailedMediaVersion(v => v + 1);
+    }
   }, []);
+
+  // Stable callback — only identity changes when failedMediaVersion changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const isMediaFailed = useCallback((key: string) => failedMediaRef.current.has(key), [failedMediaVersion]);
 
   const openAtRef = useCallback((ref: string, msgId: string) => {
     const itemIdx = chatMediaItems.findIndex(item => item.path === ref && item.id === msgId);
@@ -547,7 +553,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
                   showDateSep={showDateSep}
                   onOpenMedia={(ref) => openAtRef(ref, msg.id)}
                   markFailed={markFailed}
-                  failedMedia={failedMedia}
+                  isMediaFailed={isMediaFailed}
                   addToast={addToast}
                 />
               );

@@ -27,8 +27,16 @@ use simplelog::{ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, Te
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
+
+/// Flag to prevent concurrent DB access during reimport/reset operations.
+static DB_MAINTENANCE: AtomicBool = AtomicBool::new(false);
+
+/// Shared database state managed by Tauri. Initialized lazily, reused across all commands.
+/// Wrapped in Arc so callers can use it without holding the Mutex lock.
+type DbState = Mutex<Option<Arc<DatabaseManager>>>;
 
 fn db_path(app_handle: &tauri::AppHandle) -> AppResult<PathBuf> {
     let dir = app_handle
@@ -38,12 +46,28 @@ fn db_path(app_handle: &tauri::AppHandle) -> AppResult<PathBuf> {
     Ok(dir.join("index.db"))
 }
 
-fn db_for_app(app_handle: &tauri::AppHandle) -> AppResult<Option<DatabaseManager>> {
+/// Get or initialize the shared DatabaseManager. Returns Arc so callers don't hold the lock.
+fn db_for_app(app_handle: &tauri::AppHandle) -> AppResult<Option<Arc<DatabaseManager>>> {
+    if DB_MAINTENANCE.load(Ordering::SeqCst) {
+        return Err(AppError::Generic("Data is being reimported. Please wait.".into()));
+    }
     let path = db_path(app_handle)?;
     if !path.exists() {
         return Ok(None);
     }
-    Ok(Some(DatabaseManager::new(&path)?))
+    let state = app_handle.state::<DbState>();
+    let mut guard = state.lock().map_err(|e| AppError::Generic(format!("DB lock poisoned: {}", e)))?;
+    if guard.is_none() {
+        *guard = Some(Arc::new(DatabaseManager::new(&path)?));
+    }
+    Ok(guard.clone())
+}
+
+/// Clear the cached database (called during reset/reimport).
+fn clear_db_cache(app_handle: &tauri::AppHandle) {
+    if let Ok(mut guard) = app_handle.state::<DbState>().lock() {
+        *guard = None;
+    }
 }
 
 #[tauri::command]
@@ -113,7 +137,11 @@ async fn reconstruct_from_path(
         }
     }
 
-    let database = DatabaseManager::new(&db)?;
+    let database = Arc::new(DatabaseManager::new(&db)?);
+    // Cache the new database in Tauri managed state
+    if let Ok(mut guard) = app_handle.state::<DbState>().lock() {
+        *guard = Some(database.clone());
+    }
     let mut warnings: Vec<String> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
 
@@ -248,32 +276,45 @@ async fn reconstruct_from_path(
                 let mut merged_ids = 0;
                 let mut new_events_added = 0;
 
+                // Build index for O(1) lookup by (conversation_id, sender) instead of O(n) scan
+                let mut event_index: HashMap<(String, String), Vec<usize>> = HashMap::new();
+                for (idx, event) in all_events.iter().enumerate() {
+                    if let Some(cid) = &event.conversation_id {
+                        event_index
+                            .entry((cid.clone(), event.sender.clone()))
+                            .or_default()
+                            .push(idx);
+                    }
+                }
+
+                let convo_set: std::collections::HashSet<String> =
+                    all_conversations.iter().map(|c| c.id.clone()).collect();
+                let mut new_convos = Vec::new();
+                let mut new_events = Vec::new();
+
                 for (convo_key, json_events) in json_conversations {
                     for json_event in json_events {
-                        // Try to find a matching HTML event: same conversation + same sender + timestamp within 2 seconds
-                        let matched = all_events.iter_mut().find(|existing| {
-                            existing.conversation_id.as_deref() == Some(&convo_key)
-                                && existing.sender == json_event.sender
-                                && (existing.timestamp - json_event.timestamp).num_seconds().abs() <= 2
-                                && existing.metadata.is_none() // Don't overwrite already-enriched events
+                        // Look up candidates by (conversation_id, sender) in O(1)
+                        let key = (convo_key.clone(), json_event.sender.clone());
+                        let matched_idx = event_index.get(&key).and_then(|indices| {
+                            indices.iter().find(|&&idx| {
+                                let existing = &all_events[idx];
+                                (existing.timestamp - json_event.timestamp).num_seconds().abs() <= 2
+                                    && existing.metadata.is_none()
+                            }).copied()
                         });
 
-                        if let Some(existing) = matched {
-                            // Merge: copy media_ids metadata into the HTML event
-                            existing.metadata = json_event.metadata.clone();
+                        if let Some(idx) = matched_idx {
+                            all_events[idx].metadata = json_event.metadata.clone();
                             merged_ids += 1;
                         } else {
-                            // No matching HTML event — add the JSON event directly
-                            // Ensure the conversation exists
-                            let convo_exists = all_conversations.iter().any(|c| c.id == convo_key);
-                            if !convo_exists {
-                                // Extract conversation title from metadata if available
+                            if !convo_set.contains(&convo_key) && !new_convos.iter().any(|c: &Conversation| c.id == convo_key) {
                                 let display_name = json_event.metadata.as_ref().and_then(|m| {
                                     serde_json::from_str::<serde_json::Value>(m)
                                         .ok()
                                         .and_then(|v| v.get("conversation_title")?.as_str().map(|s| s.to_string()))
                                 });
-                                all_conversations.push(Conversation {
+                                new_convos.push(Conversation {
                                     id: convo_key.clone(),
                                     display_name,
                                     participants: Vec::new(),
@@ -282,11 +323,14 @@ async fn reconstruct_from_path(
                                     has_media: false,
                                 });
                             }
-                            all_events.push(json_event);
+                            new_events.push(json_event);
                             new_events_added += 1;
                         }
                     }
                 }
+
+                all_conversations.extend(new_convos);
+                all_events.extend(new_events);
 
                 log::info!(
                     "JSON merge: {} events enriched with media IDs, {} new events added",
@@ -502,6 +546,14 @@ async fn get_conversations(app_handle: tauri::AppHandle) -> AppResult<Vec<Conver
 }
 
 #[tauri::command]
+async fn get_conversation_name(conversation_id: String, app_handle: tauri::AppHandle) -> AppResult<Option<String>> {
+    match db_for_app(&app_handle)? {
+        Some(db) => db.get_conversation_name(&conversation_id),
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
 async fn get_messages(conversation_id: String, app_handle: tauri::AppHandle) -> AppResult<Vec<Event>> {
     match db_for_app(&app_handle)? {
         Some(db) => db.get_messages(&conversation_id),
@@ -666,26 +718,38 @@ async fn get_validation_report(app_handle: tauri::AppHandle) -> AppResult<Option
 
 #[tauri::command]
 async fn reset_data(app_handle: tauri::AppHandle) -> AppResult<()> {
-    let path = db_path(&app_handle)?;
-    if path.exists() {
-        fs::remove_file(&path)?;
-        log::info!("Database deleted: {:?}", path);
+    if DB_MAINTENANCE.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+        return Err(AppError::Generic("A data operation is already in progress.".into()));
     }
-    // Also remove WAL and SHM files if they exist
-    let wal = path.with_extension("db-wal");
-    let shm = path.with_extension("db-shm");
-    if wal.exists() {
-        let _ = fs::remove_file(&wal);
-    }
-    if shm.exists() {
-        let _ = fs::remove_file(&shm);
-    }
-    Ok(())
+
+    // Clear the cached pool before deleting files
+    clear_db_cache(&app_handle);
+
+    let result = (|| -> AppResult<()> {
+        let path = db_path(&app_handle)?;
+        if path.exists() {
+            fs::remove_file(&path)?;
+            log::info!("Database deleted: {:?}", path);
+        }
+        // Also remove WAL and SHM files if they exist
+        let wal = path.with_extension("db-wal");
+        let shm = path.with_extension("db-shm");
+        if wal.exists() {
+            let _ = fs::remove_file(&wal);
+        }
+        if shm.exists() {
+            let _ = fs::remove_file(&shm);
+        }
+        Ok(())
+    })();
+
+    DB_MAINTENANCE.store(false, Ordering::SeqCst);
+    result
 }
 
 #[tauri::command]
 async fn reimport_data(app_handle: tauri::AppHandle) -> AppResult<()> {
-    // 1. Read the current export from DB before wiping
+    // Read export info BEFORE setting maintenance flag
     let stored_export = match db_for_app(&app_handle)? {
         Some(db) => {
             let exports = db.get_exports()?;
@@ -709,10 +773,23 @@ async fn reimport_data(app_handle: tauri::AppHandle) -> AppResult<()> {
         }
     }
 
+    if DB_MAINTENANCE.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+        return Err(AppError::Generic("A reimport is already in progress.".into()));
+    }
+
+    let result = reimport_data_inner(&app_handle, export).await;
+    DB_MAINTENANCE.store(false, Ordering::SeqCst);
+    result
+}
+
+async fn reimport_data_inner(app_handle: &tauri::AppHandle, export: ExportSet) -> AppResult<()> {
     log::info!("reimport_data: reimporting (type: {:?}, {} parts)", export.source_type, export.source_paths.len());
 
-    // 2. Wipe the DB
-    let path = db_path(&app_handle)?;
+    // Clear cached pool before deleting files
+    clear_db_cache(app_handle);
+
+    // Wipe the DB
+    let path = db_path(app_handle)?;
     if path.exists() {
         fs::remove_file(&path)?;
     }
@@ -725,8 +802,8 @@ async fn reimport_data(app_handle: tauri::AppHandle) -> AppResult<()> {
         let _ = fs::remove_file(&shm);
     }
 
-    // 3. Re-process the same export
-    process_export(export, app_handle).await
+    // Re-process the same export
+    process_export(export, app_handle.clone()).await
 }
 
 #[tauri::command]
@@ -779,7 +856,7 @@ async fn check_disk_space(path: Option<String>, app_handle: tauri::AppHandle) ->
 #[tauri::command]
 async fn download_all_memories(app_handle: tauri::AppHandle) -> AppResult<()> {
     let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
-    let downloader = MemoryDownloader::new(app_handle, Arc::new(db));
+    let downloader = MemoryDownloader::new(app_handle, db);
     downloader.download_all_pending().await
 }
 
@@ -792,7 +869,7 @@ async fn download_memory(memory: Memory, app_handle: tauri::AppHandle) -> AppRes
         None => return Err(AppError::Generic("No storage path set".into())),
     };
 
-    let downloader = MemoryDownloader::new(app_handle, Arc::new(db));
+    let downloader = MemoryDownloader::new(app_handle, db);
     downloader.download_memory(memory, storage_root).await
 }
 
@@ -861,7 +938,38 @@ pub fn run() {
 
     log::info!("Snap Explorer starting. Log file: {:?}", log_path);
 
+    // Install panic hook so crashes are logged before the process dies
+    let log_path_for_hook = log_path.clone();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let msg = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            s.to_string()
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            s.clone()
+        } else {
+            "Unknown panic payload".to_string()
+        };
+
+        let location = panic_info
+            .location()
+            .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()))
+            .unwrap_or_else(|| "unknown location".to_string());
+
+        log::error!("PANIC at {}: {}", location, msg);
+
+        // Also write directly to log file in case the logger is compromised
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path_for_hook)
+        {
+            use std::io::Write;
+            let timestamp = chrono::Local::now().format("%H:%M:%S");
+            let _ = writeln!(file, "{} [ERROR] PANIC at {}: {}", timestamp, location, msg);
+        }
+    }));
+
     tauri::Builder::default()
+        .manage(Mutex::new(None::<Arc<DatabaseManager>>) as DbState)
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -872,6 +980,7 @@ pub fn run() {
             auto_detect_exports,
             process_export,
             get_conversations,
+            get_conversation_name,
             get_messages,
             get_messages_page,
             get_export_stats,

@@ -152,7 +152,7 @@ export function SearchView({ onNavigateToChat, addToast }: SearchViewProps) {
                   <motion.button
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
                     key={result.event_id}
                     onClick={() => {
                       if (result.conversation_id) {
