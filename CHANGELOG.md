@@ -1,3 +1,9 @@
+## [0.24.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.23.2...v0.24.0) (2026-02-11)
+
+### Features
+
+* update all dependencies to latest major versions ([79e46a7](https://github.com/KodyDennon/SnapDataExplorer/commit/79e46a701972a6674b957cfdc4e37ee1a3351ec5))
+
 ## [0.23.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.23.1...v0.23.2) (2026-02-11)
 
 ### Bug Fixes
