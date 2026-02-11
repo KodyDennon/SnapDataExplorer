@@ -84,6 +84,15 @@ jobs:
           name: frontend-dist
           path: dist
 
+      - name: Disable frontend build in tauri.conf.json
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const path = 'src-tauri/tauri.conf.json';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          config.build.beforeBuildCommand = '';
+          fs.writeFileSync(path, JSON.stringify(config, null, 2));
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -109,8 +118,7 @@ jobs:
         with:
           timeout_minutes: 30
           max_attempts: 3
-          # Override config to skip frontend build since we downloaded it
-          command: npx tauri build --target ${{ matrix.target }} --config '{"build":{"beforeBuildCommand":""}}'
+          command: npx tauri build --target ${{ matrix.target }}
 
       - name: Rename and Prepare Artifacts
         shell: bash
@@ -188,16 +196,11 @@ jobs:
           REPO_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}"
           
           # Extract notes from CHANGELOG.md for the specific version
-          # It looks for the section between the current version header and the next version header
-          # Format: ## [0.21.0](...) (Date) OR ## 0.21.0 (Date)
           EXTRACTED_NOTES=$(sed -n "/## \[*${VERSION}\]/,/## \[*[0-9]/p" CHANGELOG.md | sed '1d;$d')
           
           if [ -z "$EXTRACTED_NOTES" ]; then
             EXTRACTED_NOTES="Release $TAG_VERSION. See CHANGELOG.md for full details."
           fi
-
-          echo "Extracted Notes:"
-          echo "$EXTRACTED_NOTES"
 
           jq -n \
             --arg ver "$VERSION" \
