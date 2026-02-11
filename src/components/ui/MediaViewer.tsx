@@ -76,7 +76,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden"
+                className="fixed inset-0 z-100 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden"
                 onClick={() => setShowUI(!showUI)}
             >
                 {/* Background Ambient Glow */}
@@ -91,7 +91,7 @@ export const MediaViewer: React.FC<MediaViewerProps> = ({
                             initial={{ y: -20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: -20, opacity: 0 }}
-                            className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10"
+                            className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center bg-linear-to-b from-black/80 to-transparent z-10"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center gap-4">

@@ -65,7 +65,7 @@ export function GalleryView() {
   , [filtered]);
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-950/20 backdrop-blur-sm h-full overflow-hidden">
+    <div className="flex-1 flex flex-col bg-zinc-950/20 backdrop-blur-xs h-full overflow-hidden">
       {/* Header */}
       <header className="px-8 py-6 flex items-center justify-between">
         <div>

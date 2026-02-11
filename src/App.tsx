@@ -144,7 +144,7 @@ function App() {
     <div className={cn(
       "flex h-screen w-screen overflow-hidden font-sans transition-colors duration-300",
       viewMode === "chill"
-        ? "bg-gradient-to-br from-surface-900 via-surface-950 to-brand-950 text-white"
+        ? "bg-linear-to-br from-surface-900 via-surface-950 to-brand-950 text-white"
         : "bg-surface-50 dark:bg-surface-950 text-surface-900 dark:text-surface-100"
     )}>
       {/* Mobile sidebar toggle */}
@@ -189,7 +189,7 @@ function App() {
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-xs md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

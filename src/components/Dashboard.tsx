@@ -61,7 +61,7 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
   // Chill Mode: Simplified, visually focused dashboard
   if (viewMode === "chill") {
     return (
-      <div className="flex-1 p-8 overflow-y-auto bg-gradient-to-br from-surface-900 via-surface-950 to-brand-950">
+      <div className="flex-1 p-8 overflow-y-auto bg-linear-to-br from-surface-900 via-surface-950 to-brand-950">
         <header className="mb-8 text-center">
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
@@ -266,7 +266,7 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
                           initial={{ width: 0 }}
                           animate={{ width: `${(count / (filteredTopContacts[0]?.[1] || 1)) * 100}%` }}
                           transition={{ duration: 1, ease: "easeOut", delay: i * 0.1 }}
-                          className="bg-gradient-to-r from-brand-500 to-accent-purple h-full rounded-full"
+                          className="bg-linear-to-r from-brand-500 to-accent-purple h-full rounded-full"
                         />
                       </div>
                     </div>
@@ -326,10 +326,10 @@ function AIAttribution() {
         Developed 100% by AI
       </p>
       <div className="flex flex-wrap justify-center gap-3 text-[10px] font-bold text-surface-600 dark:text-surface-400">
-        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> CLAUDE 4.5
         </span>
-        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
+        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> GEMINI 3
         </span>
       </div>
@@ -353,7 +353,7 @@ function ProgressCard({ progress }: { progress: IngestionProgress }) {
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${progress.progress * 100}%` }}
-          className="bg-gradient-to-r from-brand-500 to-accent-cyan h-full rounded-full transition-all duration-700 ease-out"
+          className="bg-linear-to-r from-brand-500 to-accent-cyan h-full rounded-full transition-all duration-700 ease-out"
         />
       </div>
       <p className="text-surface-400 relative z-10">{progress.message}</p>

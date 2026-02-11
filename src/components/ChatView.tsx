@@ -96,13 +96,13 @@ const MessageItem = React.memo(({
 
         <div
           className={cn(
-            "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm max-w-2xl transition-all hover:shadow-md group/msg relative",
+            "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-xs max-w-2xl transition-all hover:shadow-md group/msg relative",
             !isSameSender || showDateSep ? "rounded-2xl rounded-tl-none" : "rounded-2xl"
           )}
         >
           {msg.event_type === "TEXT" && (
             <div className="relative group">
-              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10 whitespace-pre-wrap break-words">{msg.content}</p>
+              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10 whitespace-pre-wrap wrap-break-word">{msg.content}</p>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(msg.content || "");
@@ -150,7 +150,7 @@ const MessageItem = React.memo(({
                             </div>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity" />
                       </div>
                     );
                   })}
@@ -445,9 +445,9 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
 
   return (
     <div className="flex-1 flex flex-col bg-[#F7F8FA] dark:bg-slate-950 h-full relative overflow-hidden">
-      <header className="h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-10 shadow-sm z-10 sticky top-0">
+      <header className="h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-10 shadow-xs z-10 sticky top-0">
         <div className="flex items-center gap-5">
-          <div className="w-11 h-11 bg-gradient-to-br from-brand-500 to-accent-purple rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-brand-500/20">
+          <div className="w-11 h-11 bg-linear-to-br from-brand-500 to-accent-purple rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-brand-500/20">
             {headerName.slice(0, 1).toUpperCase()}
           </div>
           <div>
@@ -456,7 +456,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
               <Info className="w-3.5 h-3.5 text-slate-300 hover:text-brand-500 cursor-help transition-colors" />
             </h2>
             <div className="flex items-center gap-3 mt-1.5">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
                 {totalCount.toLocaleString()} messages
               </p>
               {displayName && displayName !== conversationId && (
@@ -491,7 +491,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
                     type="date"
                     value={jumpDate}
                     onChange={(e) => setJumpDate(e.target.value)}
-                    className="w-full border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-purple-500/50 outline-none dark:bg-slate-900 dark:text-slate-200 transition-all"
+                    className="w-full border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-purple-500/50 outline-hidden dark:bg-slate-900 dark:text-slate-200 transition-all"
                   />
                   <button
                     onClick={handleJumpToDate}

@@ -23,7 +23,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
 
   return (
     <AnimatePresence mode="wait">
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -41,7 +41,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
           {/* Header */}
           <div className="p-6 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between bg-white dark:bg-surface-900">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg">
                 <Info className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -61,7 +61,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
           <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
             {/* App Info */}
             <div className="text-center space-y-3 py-4">
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-brand-500 to-accent-purple p-0.5 shadow-2xl">
+              <div className="w-20 h-20 mx-auto rounded-3xl bg-linear-to-br from-brand-500 to-accent-purple p-0.5 shadow-2xl">
                 <div className="w-full h-full rounded-[22px] bg-white dark:bg-surface-900 flex items-center justify-center overflow-hidden">
                    <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
                 </div>

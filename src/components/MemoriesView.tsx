@@ -127,7 +127,7 @@ export const MemoriesView: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-zinc-950/20 backdrop-blur-sm overflow-hidden p-8 gap-8">
+        <div className="flex-1 flex flex-col h-full bg-zinc-950/20 backdrop-blur-xs overflow-hidden p-8 gap-8">
             {/* Header */}
             <header className="flex justify-between items-end">
                 <div>
@@ -157,7 +157,7 @@ export const MemoriesView: React.FC = () => {
                     <Button
                         onClick={() => startDownload()}
                         disabled={stats.pending === 0}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border-none shadow-lg shadow-purple-500/20"
+                        className="bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border-none shadow-lg shadow-purple-500/20"
                     >
                         <Download className="w-4 h-4 mr-2" />
                         Download All ({stats.pending})
@@ -258,7 +258,7 @@ export const MemoriesView: React.FC = () => {
                                 placeholder="Search by ID..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 transition-all"
                             />
                         </div>
                         {selectedIds.size > 0 && (

@@ -124,7 +124,7 @@ export function Sidebar({
         <div className="flex items-center gap-3">
           <motion.div 
             whileHover={{ rotate: 10, scale: 1.05 }}
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 overflow-hidden"
+            className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 overflow-hidden"
           >
             <img
               src="/logo.png"
@@ -197,7 +197,7 @@ export function Sidebar({
               className={cn(
                 "flex-1 flex items-center justify-center py-2 rounded-lg text-xs font-medium transition-all",
                 theme === opt.value
-                  ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm"
+                  ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-xs"
                   : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
               )}
               title={opt.label}
@@ -230,7 +230,7 @@ export function Sidebar({
             <button
               key={exp.id}
               onClick={() => onSelectExport(exp)}
-              className="w-full text-left p-2.5 rounded-xl hover:bg-white dark:hover:bg-surface-800 group transition-all border border-transparent hover:border-surface-200 dark:hover:border-surface-700 shadow-sm hover:shadow-md"
+              className="w-full text-left p-2.5 rounded-xl hover:bg-white dark:hover:bg-surface-800 group transition-all border border-transparent hover:border-surface-200 dark:hover:border-surface-700 shadow-xs hover:shadow-md"
             >
               <div className="flex items-center gap-2">
                 <Database className="w-3.5 h-3.5 text-surface-400 group-hover:text-brand-500 transition-colors" />

@@ -46,7 +46,7 @@ export function SearchView({ onNavigateToChat, addToast }: SearchViewProps) {
 
   return (
     <div className="flex-1 flex flex-col bg-surface-50 dark:bg-surface-950 h-full overflow-hidden">
-      <header className="bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800 px-10 py-8 shadow-sm">
+      <header className="bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800 px-10 py-8 shadow-xs">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-black text-surface-900 dark:text-white mb-6 tracking-tight flex items-center gap-3">
             <Search className="w-8 h-8 text-brand-500" />
@@ -57,7 +57,7 @@ export function SearchView({ onNavigateToChat, addToast }: SearchViewProps) {
               type="text"
               placeholder="Search across all conversations..."
               aria-label="Search all messages"
-              className="flex-1 bg-transparent border-none px-4 py-3 text-base focus:ring-0 outline-none dark:text-surface-100 dark:placeholder-surface-500 font-medium"
+              className="flex-1 bg-transparent border-none px-4 py-3 text-base focus:ring-0 outline-hidden dark:text-surface-100 dark:placeholder-surface-500 font-medium"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -81,7 +81,7 @@ export function SearchView({ onNavigateToChat, addToast }: SearchViewProps) {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-400 p-5 rounded-2xl mb-8 flex items-start gap-4 shadow-sm"
+              className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-400 p-5 rounded-2xl mb-8 flex items-start gap-4 shadow-xs"
             >
               <AlertCircle className="w-6 h-6 shrink-0 mt-0.5" />
               <div>

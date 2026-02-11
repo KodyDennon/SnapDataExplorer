@@ -114,9 +114,9 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
     <div className="fixed inset-0 z-50 bg-surface-950/95 backdrop-blur-xl flex items-center justify-center p-8">
       <Card variant="elevated" padding="none" className="max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh] shadow-2xl border-surface-800">
         {/* Header */}
-        <div className="p-8 border-b border-surface-100 dark:border-surface-800 bg-gradient-to-br from-surface-50 to-white dark:from-surface-800 dark:to-brand-950/20">
+        <div className="p-8 border-b border-surface-100 dark:border-surface-800 bg-linear-to-br from-surface-50 to-white dark:from-surface-800 dark:to-brand-950/20">
           <div className="flex items-center gap-5 mb-2">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 shrink-0">
               <img src="/logo.png" alt="" className="w-10 h-10 object-contain" />
             </div>
             <div>
@@ -145,7 +145,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
                 <div className="flex items-start gap-3">
                   <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">1</span>
                   <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
-                    Sign in to <code className="font-mono text-brand-500 bg-brand-500/10 px-1 rounded">accounts.snapchat.com</code>
+                    Sign in to <code className="font-mono text-brand-500 bg-brand-500/10 px-1 rounded-sm">accounts.snapchat.com</code>
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
@@ -184,7 +184,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
               </div>
               <div className="h-4 w-full bg-surface-100 dark:bg-surface-800 rounded-full overflow-hidden p-1 shadow-inner">
                 <div
-                  className="h-full bg-gradient-to-r from-brand-500 via-accent-purple to-accent-cyan transition-all duration-500 ease-out rounded-full shadow-lg"
+                  className="h-full bg-linear-to-r from-brand-500 via-accent-purple to-accent-cyan transition-all duration-500 ease-out rounded-full shadow-lg"
                   style={{ width: `${progress.progress * 100}%` }}
                 />
               </div>
@@ -309,7 +309,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
                         key={exp.id}
                         variant="glass"
                         padding="md"
-                        className="group hover:border-brand-500/50 hover:bg-brand-500/5 transition-all duration-300 flex items-center justify-between border-surface-800 backdrop-blur-sm"
+                        className="group hover:border-brand-500/50 hover:bg-brand-500/5 transition-all duration-300 flex items-center justify-between border-surface-800 backdrop-blur-xs"
                       >
                         <div className="flex items-center gap-5 min-w-0">
                           <div className="w-14 h-14 bg-surface-800 rounded-2xl flex items-center justify-center group-hover:bg-brand-500/20 group-hover:text-brand-400 transition-colors shrink-0">

@@ -104,14 +104,14 @@ export const MediaThumbnail = React.memo(({
                     />
                 )
             ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/50 backdrop-blur-sm text-zinc-500 gap-2">
+                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/50 backdrop-blur-xs text-zinc-500 gap-2">
                     {isVideo ? <Play className="w-8 h-8 opacity-20" /> : <ImageIcon className="w-8 h-8 opacity-20" />}
                     {status === 'Pending' && <span className="text-[10px] uppercase font-bold tracking-tighter opacity-40">Remote</span>}
                 </div>
             )}
 
             {/* Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
 
             {/* Progress Bar for Downloads */}
             {status === 'Downloading' && progress && (
@@ -136,7 +136,7 @@ export const MediaThumbnail = React.memo(({
                         isSelected ? "bg-purple-600 border-purple-500" : "bg-black/40 hover:bg-black/60"
                     )}
                 >
-                    {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-sm" />}
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-xs" />}
                 </div>
 
                 <div className="p-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg">
@@ -152,7 +152,7 @@ export const MediaThumbnail = React.memo(({
                     </span>
                 )}
                 {isVideo && (
-                    <div className="p-1 rounded-md bg-white/10 backdrop-blur-sm border border-white/10">
+                    <div className="p-1 rounded-md bg-white/10 backdrop-blur-xs border border-white/10">
                         <Play className="w-3 h-3 text-white fill-white" />
                     </div>
                 )}

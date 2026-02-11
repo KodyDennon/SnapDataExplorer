@@ -113,15 +113,15 @@ export function ChillGallery({ onExit }: ChillGalleryProps) {
                     className="absolute inset-0 pointer-events-none z-0"
                 >
                     <div
-                        className="absolute inset-0 bg-cover bg-center blur-[140px] scale-150 transition-all duration-[2000ms]"
+                        className="absolute inset-0 bg-cover bg-center blur-[140px] scale-150 transition-all duration-2000"
                         style={{ backgroundImage: hoveredItem ? `url(${convertFileSrc(hoveredItem.path)})` : 'none' }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-tr from-zinc-950 via-transparent to-zinc-950/50" />
+                    <div className="absolute inset-0 bg-linear-to-tr from-zinc-950 via-transparent to-zinc-950/50" />
                 </motion.div>
             </AnimatePresence>
 
             {/* Floating Header Controls */}
-            <div className="absolute inset-x-0 top-0 z-40 p-8 flex justify-between items-center bg-gradient-to-b from-zinc-950/80 to-transparent backdrop-blur-[2px]">
+            <div className="absolute inset-x-0 top-0 z-40 p-8 flex justify-between items-center bg-linear-to-b from-zinc-950/80 to-transparent backdrop-blur-[2px]">
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -247,17 +247,17 @@ function GalleryItem({
             onMouseLeave={onMouseLeave}
             onClick={onClick}
             style={itemStyle}
-            className="group relative rounded-3xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 hover:border-brand-500/50 transition-all duration-700 shadow-xl hover:shadow-brand-500/20 aspect-[3/4]"
+            className="group relative rounded-3xl overflow-hidden cursor-pointer bg-zinc-900 border border-white/10 hover:border-brand-500/50 transition-all duration-700 shadow-xl hover:shadow-brand-500/20 aspect-3/4"
         >
             {/* Glow Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-40 group-hover:opacity-80 transition-opacity duration-700 z-10" />
+            <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-transparent to-transparent opacity-40 group-hover:opacity-80 transition-opacity duration-700 z-10" />
 
             {/* Media */}
             {item.media_type === "Video" ? (
                 <div className="w-full h-full relative overflow-hidden">
                     <video
                         src={src}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-2000 ease-out"
                         muted
                         loop
                         onMouseOver={e => e.currentTarget.play()}
@@ -270,7 +270,7 @@ function GalleryItem({
             ) : (
                 <img
                     src={src}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms] ease-out"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-2000 ease-out"
                     alt=""
                     loading="lazy"
                 />
@@ -304,7 +304,7 @@ function GalleryItem({
             </div>
 
             {/* Shimmer on Hover */}
-            <div className="absolute inset-0 -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-[1500ms] bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none z-30" />
+            <div className="absolute inset-0 -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1500 bg-linear-to-r from-transparent via-white/10 to-transparent pointer-events-none z-30" />
         </motion.div>
     );
 }
