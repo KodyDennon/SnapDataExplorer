@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { VirtuosoGrid } from "react-virtuoso";
 import { MediaStreamEntry, MediaViewerItem, PaginatedMedia } from "../types";
 import { cn } from "../lib/utils";
 import { MediaThumbnail } from "./ui/MediaThumbnail";
 import { MediaViewer } from "./ui/MediaViewer";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Loader2 } from "lucide-react";
 
 export function GalleryView() {
   const [media, setMedia] = useState<MediaStreamEntry[]>([]);
@@ -15,6 +15,7 @@ export function GalleryView() {
   const [totalCount, setTotalCount] = useState(0);
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [filter, setFilter] = useState<"all" | "Image" | "Video">("all");
+  const deferredFilter = useDeferredValue(filter);
   const offsetRef = useRef(0);
 
   const loadMedia = useCallback(async (append = false) => {
@@ -56,8 +57,12 @@ export function GalleryView() {
   }, [loadingMore, hasMore, loadMedia]);
 
   const filtered = useMemo(() =>
-    filter === "all" ? media : media.filter(m => m.media_type === filter)
-    , [media, filter]);
+    deferredFilter === "all" ? media : media.filter(m => m.media_type === deferredFilter)
+    , [media, deferredFilter]);
+
+  const viewerItems = useMemo(() => 
+    filtered.map((f): MediaViewerItem => ({ ...f, media_path: f.path, media_type: f.media_type }))
+  , [filtered]);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950/20 backdrop-blur-sm h-full overflow-hidden">
@@ -93,7 +98,7 @@ export function GalleryView() {
       {/* Content */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-white/5 border-t-purple-500 rounded-full animate-spin" />
+          <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex-1 flex items-center justify-center flex-col gap-6 text-center animate-in fade-in zoom-in">
@@ -135,7 +140,7 @@ export function GalleryView() {
       {/* Loading more indicator */}
       {loadingMore && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 py-2 px-4 rounded-full bg-purple-600/90 text-white text-xs font-bold shadow-2xl backdrop-blur-md flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin" />
           Loading more...
         </div>
       )}
@@ -143,7 +148,7 @@ export function GalleryView() {
       <MediaViewer
         isOpen={viewerIndex >= 0}
         onClose={() => setViewerIndex(-1)}
-        items={useMemo(() => filtered.map((f): MediaViewerItem => ({ ...f, media_path: f.path, media_type: f.media_type })), [filtered])}
+        items={viewerItems}
         currentIndex={viewerIndex}
         onIndexChange={setViewerIndex}
       />

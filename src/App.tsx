@@ -18,6 +18,7 @@ import { useTheme } from "./hooks/useTheme";
 import { useToast } from "./hooks/useToast";
 import { ViewMode } from "./components/ui/ModeToggle";
 import { cn } from "./lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
@@ -194,42 +195,60 @@ function App() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden">
-        {viewMode === "chill" ? (
-          <ChillGallery onExit={() => setViewMode("pro")} />
-        ) : (
-          <>
-            {activePage === "dashboard" && (
-              <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} />
-            )}
+      <main className="flex-1 flex overflow-hidden relative">
+        <AnimatePresence mode="wait">
+          {viewMode === "chill" ? (
+            <motion.div
+              key="chill"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="absolute inset-0 z-50"
+            >
+              <ChillGallery onExit={() => setViewMode("pro")} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={activePage}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="flex-1 flex overflow-hidden h-full w-full"
+            >
+              {activePage === "dashboard" && (
+                <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} />
+              )}
 
-            {activePage === "chats" && (
-              <>
-                <ConversationList
-                  onSelect={setSelectedConvo}
-                  selectedId={selectedConvo}
-                  refreshTrigger={refreshTrigger}
-                />
-                {selectedConvo ? (
-                  <ChatView conversationId={selectedConvo} addToast={addToast} />
-                ) : (
-                  <div className="flex-1 flex items-center justify-center bg-surface-50 dark:bg-surface-900 flex-col gap-4">
-                    <span className="text-6xl animate-bounce text-surface-200 dark:text-surface-700">💬</span>
-                    <p className="font-bold text-xl text-surface-400">Select a conversation</p>
-                  </div>
-                )}
-              </>
-            )}
+              {activePage === "chats" && (
+                <>
+                  <ConversationList
+                    onSelect={setSelectedConvo}
+                    selectedId={selectedConvo}
+                    refreshTrigger={refreshTrigger}
+                  />
+                  {selectedConvo ? (
+                    <ChatView conversationId={selectedConvo} addToast={addToast} />
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center bg-surface-50 dark:bg-surface-900 flex-col gap-4">
+                      <span className="text-6xl animate-bounce text-surface-200 dark:text-surface-700">💬</span>
+                      <p className="font-bold text-xl text-surface-400">Select a conversation</p>
+                    </div>
+                  )}
+                </>
+              )}
 
-            {activePage === "search" && (
-              <SearchView onNavigateToChat={handleNavigateToChat} addToast={addToast} />
-            )}
+              {activePage === "search" && (
+                <SearchView onNavigateToChat={handleNavigateToChat} addToast={addToast} />
+              )}
 
-            {activePage === "gallery" && <GalleryView />}
+              {activePage === "gallery" && <GalleryView />}
 
-            {activePage === "memories" && <MemoriesView />}
-          </>
-        )}
+              {activePage === "memories" && <MemoriesView />}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />

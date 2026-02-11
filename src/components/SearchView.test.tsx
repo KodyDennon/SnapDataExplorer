@@ -38,7 +38,7 @@ describe('SearchView', () => {
     fireEvent.click(screen.getByText('Search'));
 
     await waitFor(() => {
-      expect(screen.getByText('1 result')).toBeInTheDocument();
+      expect(screen.getByText(/Found 1 matching events/i)).toBeInTheDocument();
     });
     expect(screen.getByText('Hello world')).toBeInTheDocument();
   });

@@ -1,9 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ExportSet, ExportStats, IngestionProgress, ValidationReport } from "../types";
-import { Card, Badge } from "./ui";
+import { Card, Badge, Button } from "./ui";
 import { cn } from "../lib/utils";
 import { ViewMode } from "./ui/ModeToggle";
+import { CardSkeleton, Skeleton } from "./ui/Skeleton";
+import { 
+  BarChart3, 
+  Users, 
+  Image as ImageIcon, 
+  Calendar, 
+  Search, 
+  Zap, 
+  History,
+  ShieldCheck,
+  AlertTriangle
+} from "lucide-react";
+import { motion } from "framer-motion";
 
 interface DashboardProps {
   currentExport: ExportSet | null;
@@ -14,33 +27,70 @@ interface DashboardProps {
 export function Dashboard({ currentExport, progress, viewMode }: DashboardProps) {
   const [stats, setStats] = useState<ExportStats | null>(null);
   const [validation, setValidation] = useState<ValidationReport | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (currentExport && !progress) {
-      invoke<ExportStats | null>("get_export_stats").then(setStats);
-      invoke<ValidationReport | null>("get_validation_report").then(setValidation);
+      setLoading(true);
+      Promise.all([
+        invoke<ExportStats | null>("get_export_stats"),
+        invoke<ValidationReport | null>("get_validation_report")
+      ]).then(([s, v]) => {
+        setStats(s);
+        setValidation(v);
+        setLoading(false);
+      }).catch(() => setLoading(false));
     }
   }, [currentExport, progress]);
 
   // Filter out the export owner from top contacts
-  // The owner is typically the person with the most messages (appears in all conversations)
   const filteredTopContacts = useMemo(() => {
     if (!stats || stats.top_contacts.length === 0) return [];
-
-    // Get the owner username - it's the one with the most messages
     const ownerUsername = stats.top_contacts[0][0];
-
-    // Filter out the owner and return the rest
     return stats.top_contacts.filter(([name]) => name !== ownerUsername);
   }, [stats]);
+
+  if (loading && currentExport && !progress) {
+    return (
+      <div className="flex-1 p-8 lg:p-12 overflow-y-auto bg-surface-50 dark:bg-surface-950 space-y-8">
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-6 w-96" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   // Chill Mode: Simplified, visually focused dashboard
   if (viewMode === "chill") {
     return (
       <div className="flex-1 p-8 overflow-y-auto bg-gradient-to-br from-surface-900 via-surface-950 to-brand-950">
         <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2 text-white">Your Memories</h1>
-          <p className="text-surface-400">A glimpse into your Snapchat journey</p>
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-bold mb-2 text-white"
+          >
+            Your Memories
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-surface-400"
+          >
+            A glimpse into your Snapchat journey
+          </motion.p>
         </header>
 
         {progress && <ProgressCard progress={progress} />}
@@ -51,53 +101,65 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Hero Stats */}
             <div className="grid grid-cols-3 gap-4 text-center">
-              <ChillStatCard value={stats.total_messages.toLocaleString()} label="Messages" icon="💬" />
-              <ChillStatCard value={stats.total_conversations.toString()} label="Friends" icon="👥" />
-              <ChillStatCard value={stats.total_memories.toString()} label="Memories" icon="📸" />
+              <ChillStatCard value={stats.total_messages.toLocaleString()} label="Messages" icon="💬" delay={0.1} />
+              <ChillStatCard value={stats.total_conversations.toString()} label="Friends" icon="👥" delay={0.2} />
+              <ChillStatCard value={stats.total_memories.toString()} label="Memories" icon="📸" delay={0.3} />
             </div>
 
             {/* Journey Timeline */}
-            <Card variant="glass" padding="lg" className="text-center">
-              <p className="text-surface-400 text-sm mb-2">Your Snapchat Journey</p>
-              <p className="text-2xl font-bold text-white">
-                {stats.start_date && stats.end_date ? (
-                  <>
-                    {new Date(stats.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    <span className="text-brand-400 mx-3">→</span>
-                    {new Date(stats.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                  </>
-                ) : "Timeline Unknown"}
-              </p>
-              {stats.start_date && stats.end_date && (
-                <p className="text-surface-500 text-sm mt-2">
-                  {Math.round((new Date(stats.end_date).getTime() - new Date(stats.start_date).getTime()) / (1000 * 60 * 60 * 24 * 365))} years of memories
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card variant="glass" padding="lg" className="text-center">
+                <p className="text-surface-400 text-sm mb-2">Your Snapchat Journey</p>
+                <p className="text-2xl font-bold text-white">
+                  {stats.start_date && stats.end_date ? (
+                    <>
+                      {new Date(stats.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      <span className="text-brand-400 mx-3">→</span>
+                      {new Date(stats.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </>
+                  ) : "Timeline Unknown"}
                 </p>
-              )}
-            </Card>
+                {stats.start_date && stats.end_date && (
+                  <p className="text-surface-500 text-sm mt-2">
+                    {Math.round((new Date(stats.end_date).getTime() - new Date(stats.start_date).getTime()) / (1000 * 60 * 60 * 24 * 365))} years of memories
+                  </p>
+                )}
+              </Card>
+            </motion.div>
 
             {/* Top Friends */}
-            <Card variant="glass" padding="lg">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span>🏆</span> Your Closest Friends
-              </h3>
-              <div className="space-y-3">
-                {filteredTopContacts.slice(0, 5).map(([name, count], i) => (
-                  <div key={name} className="flex items-center gap-3">
-                    <span className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                      i === 0 ? "bg-yellow-500 text-yellow-900" :
-                        i === 1 ? "bg-surface-400 text-surface-900" :
-                          i === 2 ? "bg-amber-700 text-amber-100" :
-                            "bg-surface-700 text-surface-300"
-                    )}>
-                      {i + 1}
-                    </span>
-                    <span className="flex-1 font-medium text-surface-200">{name}</span>
-                    <span className="text-surface-500 text-sm">{count} msgs</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card variant="glass" padding="lg">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <span>🏆</span> Your Closest Friends
+                </h3>
+                <div className="space-y-3">
+                  {filteredTopContacts.slice(0, 5).map(([name, count], i) => (
+                    <div key={name} className="flex items-center gap-3">
+                      <span className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                        i === 0 ? "bg-yellow-500 text-yellow-900" :
+                          i === 1 ? "bg-surface-400 text-surface-900" :
+                            i === 2 ? "bg-amber-700 text-amber-100" :
+                              "bg-surface-700 text-surface-300"
+                      )}>
+                        {i + 1}
+                      </span>
+                      <span className="flex-1 font-medium text-surface-200">{name}</span>
+                      <span className="text-surface-500 text-sm">{count} msgs</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </motion.div>
           </div>
         )}
         <AIAttribution />
@@ -108,12 +170,25 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
   // Pro Mode: Data-heavy, forensic dashboard
   return (
     <div className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar bg-surface-50 dark:bg-surface-950">
-      <header className="mb-10">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-white">Archive Intelligence</h1>
-          <Badge variant="info" size="sm">FORENSIC</Badge>
+      <header className="mb-10 flex justify-between items-start">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold tracking-tight text-surface-900 dark:text-white">Archive Intelligence</h1>
+            <Badge variant="info" size="sm">FORENSIC</Badge>
+          </div>
+          <p className="text-surface-500 dark:text-surface-400 text-lg">Deep analysis and data reconstruction of your Snapchat export.</p>
         </div>
-        <p className="text-surface-500 dark:text-surface-400 text-lg">Deep analysis and data reconstruction of your Snapchat export.</p>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2">
+            <Search className="w-4 h-4" />
+            Global Search
+          </Button>
+          <Button className="gap-2 bg-brand-600 hover:bg-brand-500">
+            <Zap className="w-4 h-4" />
+            Quick Export
+          </Button>
+        </div>
       </header>
 
       {progress && <ProgressCard progress={progress} />}
@@ -124,10 +199,25 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
         <div className="space-y-8">
           {/* Primary Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard label="Total Messages" value={stats.total_messages.toLocaleString()} trend="+12%" />
-            <StatCard label="Conversations" value={stats.total_conversations.toString()} />
-            <StatCard label="Memories" value={stats.total_memories.toString()} />
-            <StatCard label="Date Range">
+            <StatCard 
+              label="Total Messages" 
+              value={stats.total_messages.toLocaleString()} 
+              icon={<BarChart3 className="w-4 h-4 text-brand-500" />} 
+            />
+            <StatCard 
+              label="Conversations" 
+              value={stats.total_conversations.toString()} 
+              icon={<Users className="w-4 h-4 text-accent-purple" />} 
+            />
+            <StatCard 
+              label="Memories" 
+              value={stats.total_memories.toString()} 
+              icon={<ImageIcon className="w-4 h-4 text-accent-pink" />} 
+            />
+            <StatCard 
+              label="Date Range" 
+              icon={<Calendar className="w-4 h-4 text-accent-cyan" />}
+            >
               <p className="text-lg font-bold text-surface-900 dark:text-white mt-2">
                 {stats.start_date ? new Date(stats.start_date).toLocaleDateString() : "N/A"}
                 <span className="mx-2 text-surface-300 dark:text-surface-600">→</span>
@@ -136,37 +226,47 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
             </StatCard>
           </div>
 
-          {/* Media Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <StatCard label="Linked Media Files" value={stats.total_media_files.toString()}>
-              {stats.total_media_files > 0 && (
-                <Badge variant="success" size="sm" className="mt-2">Ready for Gallery</Badge>
-              )}
-            </StatCard>
-            <StatCard label="Missing Media" value={stats.missing_media_count.toString()}>
-              {stats.missing_media_count > 0 && (
-                <p className="text-xs text-amber-500 mt-2 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  {stats.missing_media_count} events without linked files
-                </p>
-              )}
-            </StatCard>
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-brand-500/50 cursor-pointer group transition-all">
+              <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500 group-hover:bg-brand-500 group-hover:text-white transition-all">
+                <History className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-surface-900 dark:text-white">Recent Chats</h4>
+                <p className="text-xs text-surface-500">Jump back into conversations</p>
+              </div>
+            </Card>
+            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-accent-purple/50 cursor-pointer group transition-all">
+              <div className="w-12 h-12 rounded-xl bg-accent-purple/10 flex items-center justify-center text-accent-purple group-hover:bg-accent-purple group-hover:text-white transition-all">
+                <ImageIcon className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-surface-900 dark:text-white">Media Gallery</h4>
+                <p className="text-xs text-surface-500">Browse all visual assets</p>
+              </div>
+            </Card>
+            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-accent-cyan/50 cursor-pointer group transition-all">
+              <div className="w-12 h-12 rounded-xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan group-hover:bg-accent-cyan group-hover:text-white transition-all">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-surface-900 dark:text-white">Data Integrity</h4>
+                <p className="text-xs text-surface-500">Verify your archive health</p>
+              </div>
+            </Card>
           </div>
 
           {/* Detailed Analysis Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Top Contacts */}
-            <Card variant="surface" padding="lg">
+            <Card variant="surface" padding="lg" className="border-t-4 border-t-brand-500">
               <h3 className="text-lg font-bold mb-5 flex items-center gap-2 text-surface-900 dark:text-white">
-                <svg className="w-5 h-5 text-accent-pink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                </svg>
+                <Users className="w-5 h-5 text-brand-500" />
                 Message Frequency by Contact
               </h3>
               <div className="space-y-4">
-                {filteredTopContacts.map(([name, count], i) => (
+                {filteredTopContacts.slice(0, 8).map(([name, count], i) => (
                   <div key={name} className="flex items-center gap-4">
                     <span className="w-6 text-surface-400 font-mono text-sm">{String(i + 1).padStart(2, '0')}</span>
                     <div className="flex-1">
@@ -175,9 +275,11 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
                         <span className="text-surface-400 text-sm font-mono">{count.toLocaleString()}</span>
                       </div>
                       <div className="w-full bg-surface-100 dark:bg-surface-800 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-brand-500 to-accent-purple h-full rounded-full transition-all duration-1000"
-                          style={{ width: `${(count / (filteredTopContacts[0]?.[1] || 1)) * 100}%` }}
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(count / (filteredTopContacts[0]?.[1] || 1)) * 100}%` }}
+                          transition={{ duration: 1, ease: "easeOut", delay: i * 0.1 }}
+                          className="bg-gradient-to-r from-brand-500 to-accent-purple h-full rounded-full"
                         />
                       </div>
                     </div>
@@ -188,11 +290,9 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
 
             {/* Data Integrity */}
             {validation && (
-              <Card variant="surface" padding="lg">
+              <Card variant="surface" padding="lg" className="border-t-4 border-t-accent-cyan">
                 <h3 className="text-lg font-bold mb-5 flex items-center gap-2 text-surface-900 dark:text-white">
-                  <svg className="w-5 h-5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                  <ShieldCheck className="w-5 h-5 text-accent-cyan" />
                   Data Integrity Report
                 </h3>
                 <div className="space-y-4">
@@ -201,21 +301,21 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
 
                   {validation.warnings.length > 0 ? (
                     <div className="mt-4 space-y-2">
-                      <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Warnings</p>
-                      {validation.warnings.map((w, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
-                          <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          <span>{w}</span>
-                        </div>
-                      ))}
+                      <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider flex items-center gap-2">
+                        <AlertTriangle className="w-3 h-3 text-amber-500" />
+                        Warnings
+                      </p>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-2">
+                        {validation.warnings.map((w, i) => (
+                          <div key={i} className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                            {w}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-500/10 p-3 rounded-xl border border-green-200 dark:border-green-500/20 mt-4">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
+                      <ShieldCheck className="w-4 h-4" />
                       <span className="font-semibold">All integrity checks passed</span>
                     </div>
                   )}
@@ -223,36 +323,6 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
               </Card>
             )}
           </div>
-
-          {/* Summary Banner */}
-          <Card variant="elevated" padding="lg" className="bg-gradient-to-br from-brand-600 to-accent-purple text-white">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
-                📊
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold mb-2">Archive Summary</h3>
-                <p className="text-white/80 leading-relaxed">
-                  Your archive spans{" "}
-                  <span className="font-semibold text-white">
-                    {stats.start_date && stats.end_date
-                      ? `${Math.round((new Date(stats.end_date).getTime() - new Date(stats.start_date).getTime()) / (1000 * 60 * 60 * 24 * 365))} years`
-                      : "an unknown period"}
-                  </span>
-                  {" "}containing{" "}
-                  <span className="font-semibold text-white">{stats.total_conversations} conversations</span>,{" "}
-                  <span className="font-semibold text-white">{stats.total_messages.toLocaleString()} messages</span>, and{" "}
-                  <span className="font-semibold text-white">{stats.total_memories} memories</span>.
-                </p>
-                <div className="mt-4 flex items-center gap-2 text-sm bg-white/10 rounded-xl px-4 py-2 inline-flex">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Full-text search is active across all indexed content.
-                </div>
-              </div>
-            </div>
-          </Card>
         </div>
       )}
       <AIAttribution />
@@ -273,48 +343,52 @@ function AIAttribution() {
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> CLAUDE 4.5
         </span>
         <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-600" /> CLAUDE 4.6
-        </span>
-        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-sm">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> GEMINI 3
         </span>
       </div>
-      <p className="mt-4 text-[10px] text-surface-400 dark:text-surface-500 max-w-md mx-auto leading-relaxed italic">
-        Experimental software authored by autonomous agents. Privacy-first, local-only architecture maintained throughout development.
-      </p>
     </div>
   );
 }
 
 function ProgressCard({ progress }: { progress: IngestionProgress }) {
   return (
-    <Card variant="elevated" padding="lg" className="bg-surface-900 text-white mb-8">
-      <div className="flex justify-between items-center mb-4">
+    <Card variant="elevated" padding="lg" className="bg-surface-900 text-white mb-8 overflow-hidden relative">
+      <div className="flex justify-between items-center mb-4 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center animate-pulse">
-            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
+            <Loader2 className="w-5 h-5 animate-spin" />
           </div>
           <h3 className="text-lg font-bold">{progress.current_step}</h3>
         </div>
         <span className="text-xl font-mono text-brand-400">{(progress.progress * 100).toFixed(0)}%</span>
       </div>
-      <div className="w-full bg-surface-800 rounded-full h-3 mb-4 overflow-hidden">
-        <div
+      <div className="w-full bg-surface-800 rounded-full h-3 mb-4 overflow-hidden relative z-10">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${progress.progress * 100}%` }}
           className="bg-gradient-to-r from-brand-500 to-accent-cyan h-full rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${progress.progress * 100}%` }}
         />
       </div>
-      <p className="text-surface-400">{progress.message}</p>
+      <p className="text-surface-400 relative z-10">{progress.message}</p>
+      
+      {/* Decorative background pulse */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 blur-3xl -mr-32 -mt-32 rounded-full animate-pulse" />
     </Card>
+  );
+}
+
+function Loader2({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="max-w-xl mx-auto mt-16 text-center">
+    <div className="max-w-xl mx-auto mt-16 text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
       <div className="w-28 h-28 bg-surface-100 dark:bg-surface-800 rounded-3xl flex items-center justify-center shadow-lg mx-auto mb-8 border border-surface-200 dark:border-surface-700">
         <span className="text-5xl">🧠</span>
       </div>
@@ -324,43 +398,29 @@ function EmptyState() {
       </p>
       <div className="flex justify-center gap-6 text-sm font-semibold text-surface-400">
         <span className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
+          <ShieldCheck className="w-4 h-4 text-green-500" />
           Privacy First
         </span>
         <span className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
+          <Zap className="w-4 h-4 text-brand-500" />
           Local Only
-        </span>
-        <span className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          Media Recovery
         </span>
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, trend, children }: {
+function StatCard({ label, value, icon, children }: {
   label: string;
   value?: string;
-  trend?: string;
+  icon?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
-    <Card variant="surface" padding="lg">
+    <Card variant="surface" padding="lg" className="hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <span className="text-surface-400 font-semibold text-xs uppercase tracking-wider">{label}</span>
-        {trend && (
-          <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-500/10 px-2 py-0.5 rounded-full">
-            {trend}
-          </span>
-        )}
+        {icon}
       </div>
       {value && <p className="text-4xl font-black text-surface-900 dark:text-white mt-2">{value}</p>}
       {children}
@@ -368,13 +428,19 @@ function StatCard({ label, value, trend, children }: {
   );
 }
 
-function ChillStatCard({ value, label, icon }: { value: string; label: string; icon: string }) {
+function ChillStatCard({ value, label, icon, delay = 0 }: { value: string; label: string; icon: string; delay?: number }) {
   return (
-    <Card variant="glass" padding="md" className="text-center">
-      <span className="text-3xl mb-1 block">{icon}</span>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-surface-400 text-xs">{label}</p>
-    </Card>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay }}
+    >
+      <Card variant="glass" padding="md" className="text-center">
+        <span className="text-3xl mb-1 block">{icon}</span>
+        <p className="text-2xl font-bold text-white">{value}</p>
+        <p className="text-surface-400 text-xs">{label}</p>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -387,12 +453,14 @@ function IntegrityRow({ label, value, total }: { label: string; value: number; t
         <span className="text-sm text-surface-400 font-mono">{value}/{total}</span>
       </div>
       <div className="w-full bg-surface-100 dark:bg-surface-800 rounded-full h-2 overflow-hidden">
-        <div
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
           className={cn(
-            "h-full rounded-full transition-all duration-1000",
+            "h-full rounded-full",
             pct === 100 ? "bg-green-500" : pct > 80 ? "bg-amber-500" : "bg-red-500"
           )}
-          style={{ width: `${pct}%` }}
         />
       </div>
     </div>

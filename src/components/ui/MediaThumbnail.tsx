@@ -18,7 +18,7 @@ interface MediaThumbnailProps {
     timestamp?: string;
 }
 
-export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
+export const MediaThumbnail = React.memo(({
     path,
     remoteUrl,
     mediaType,
@@ -29,7 +29,7 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
     onClick,
     className,
     timestamp
-}) => {
+}: MediaThumbnailProps) => {
     const [hasError, setHasError] = useState(false);
     const isVideo = mediaType.toLowerCase() === 'video';
 
@@ -65,6 +65,7 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
         <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            layout
             className={cn(
                 "relative rounded-xl overflow-hidden aspect-square cursor-pointer group bg-black/40 border border-white/5 shadow-2xl transition-all duration-300",
                 isSelected && "ring-2 ring-purple-500 ring-offset-2 ring-offset-zinc-950",
@@ -158,4 +159,6 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
             </div>
         </motion.div>
     );
-};
+});
+
+MediaThumbnail.displayName = "MediaThumbnail";

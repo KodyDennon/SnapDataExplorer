@@ -6,9 +6,19 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Toast } from "../hooks/useToast";
 import { MediaViewer } from "./ui/MediaViewer";
-import { Image as ImageIcon, Play, FileText, Smartphone, PhoneMissed, Hash, RefreshCw } from "lucide-react";
+import { 
+  Image as ImageIcon, 
+  Play, 
+  FileText, 
+  Smartphone, 
+  PhoneMissed, 
+  Hash, 
+  RefreshCw,
+  ChevronDown,
+  Info
+} from "lucide-react";
 import { cn } from "../lib/utils";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 function MediaFallback({ type }: { type: "image" | "video" | "snap" | "snap-video" }) {
   return (
@@ -92,7 +102,7 @@ const MessageItem = React.memo(({
         >
           {msg.event_type === "TEXT" && (
             <div className="relative group">
-              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10">{msg.content}</p>
+              <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium pr-10 whitespace-pre-wrap break-words">{msg.content}</p>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(msg.content || "");
@@ -273,6 +283,8 @@ const MessageItem = React.memo(({
   );
 });
 
+MessageItem.displayName = "MessageItem";
+
 export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -285,6 +297,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [failedMedia, setFailedMedia] = useState<Set<string>>(new Set());
   const [viewerIndex, setViewerIndex] = useState(-1);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const offsetRef = useRef(0);
@@ -421,17 +434,27 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
     if (itemIdx >= 0) setViewerIndex(itemIdx);
   }, [chatMediaItems]);
 
+  const scrollToBottom = () => {
+    virtuosoRef.current?.scrollToIndex({
+      index: messages.length - 1,
+      behavior: "smooth"
+    });
+  };
+
   const headerName = displayName || conversationId;
 
   return (
     <div className="flex-1 flex flex-col bg-[#F7F8FA] dark:bg-slate-950 h-full relative overflow-hidden">
-      <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-10 shadow-sm z-10">
+      <header className="h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-10 shadow-sm z-10 sticky top-0">
         <div className="flex items-center gap-5">
-          <div className="w-11 h-11 bg-gradient-to-br from-slate-800 to-slate-950 dark:from-slate-700 dark:to-slate-900 rounded-2xl flex items-center justify-center text-white font-black shadow-lg">
+          <div className="w-11 h-11 bg-gradient-to-br from-brand-500 to-accent-purple rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-brand-500/20">
             {headerName.slice(0, 1).toUpperCase()}
           </div>
           <div>
-            <h2 className="font-black text-lg text-slate-900 dark:text-slate-100 leading-none tracking-tight">{headerName}</h2>
+            <h2 className="font-black text-lg text-slate-900 dark:text-slate-100 leading-none tracking-tight flex items-center gap-2">
+              {headerName}
+              <Info className="w-3.5 h-3.5 text-slate-300 hover:text-brand-500 cursor-help transition-colors" />
+            </h2>
             <div className="flex items-center gap-3 mt-1.5">
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">
                 {totalCount.toLocaleString()} messages
@@ -457,7 +480,12 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
             </button>
             <AnimatePresence>
               {showDatePicker && (
-                <div className="absolute right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl p-5 z-20 w-72 animate-in fade-in slide-in-from-top-2">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 top-full mt-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl p-5 z-20 w-72"
+                >
                   <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-widest">Jump to History</p>
                   <input
                     type="date"
@@ -472,7 +500,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
                   >
                     Execute Jump
                   </button>
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -483,7 +511,7 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
             >
               {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Export
             </button>
-            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-20 hidden group-hover:block w-48">
+            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-20 hidden group-hover:block w-48 animate-in fade-in slide-in-from-top-2">
               <button onClick={() => handleExport("text")} className="block w-full text-left px-5 py-3 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200 transition-colors">
                 Archive (.txt)
               </button>
@@ -497,36 +525,53 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
 
       {loading && initialLoad ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-slate-200 dark:border-slate-800 border-t-purple-500 rounded-full animate-spin" />
+          <RefreshCw className="w-10 h-10 text-brand-500 animate-spin" />
         </div>
       ) : (
-        <Virtuoso
-          ref={virtuosoRef}
-          style={{ height: "100%", width: "100%" }}
-          totalCount={messages.length}
-          itemContent={(index) => {
-            const msg = messages[index];
-            if (!msg) return null;
-            const isSameSender = index > 0 && messages[index - 1].sender === msg.sender;
-            const showDateSep = index === 0 || (
-              new Date(messages[index - 1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString()
-            );
-            return (
-              <MessageItem
-                msg={msg}
-                isSameSender={isSameSender}
-                showDateSep={showDateSep}
-                onOpenMedia={(ref) => openAtRef(ref, msg.id)}
-                markFailed={markFailed}
-                failedMedia={failedMedia}
-                addToast={addToast}
-              />
-            );
-          }}
-          endReached={loadMore}
-          followOutput="auto"
-          overscan={300}
-        />
+        <div className="flex-1 relative overflow-hidden">
+          <Virtuoso
+            ref={virtuosoRef}
+            style={{ height: "100%", width: "100%" }}
+            totalCount={messages.length}
+            itemContent={(index) => {
+              const msg = messages[index];
+              if (!msg) return null;
+              const isSameSender = index > 0 && messages[index - 1].sender === msg.sender;
+              const showDateSep = index === 0 || (
+                new Date(messages[index - 1].timestamp).toDateString() !== new Date(msg.timestamp).toDateString()
+              );
+              return (
+                <MessageItem
+                  msg={msg}
+                  isSameSender={isSameSender}
+                  showDateSep={showDateSep}
+                  onOpenMedia={(ref) => openAtRef(ref, msg.id)}
+                  markFailed={markFailed}
+                  failedMedia={failedMedia}
+                  addToast={addToast}
+                />
+              );
+            }}
+            endReached={loadMore}
+            followOutput="auto"
+            overscan={300}
+            atBottomStateChange={(atBottom) => setShowScrollToBottom(!atBottom)}
+          />
+
+          <AnimatePresence>
+            {showScrollToBottom && (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                onClick={scrollToBottom}
+                className="absolute bottom-6 right-6 p-3 rounded-full bg-brand-600 text-white shadow-xl hover:bg-brand-500 transition-colors z-20 group"
+              >
+                <ChevronDown className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       <MediaViewer

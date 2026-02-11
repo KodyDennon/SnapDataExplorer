@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useDeferredValue } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Virtuoso } from "react-virtuoso";
 import { Conversation } from "../types";
 import { cn } from "../lib/utils";
+import { ConversationListSkeleton } from "./ui/Skeleton";
 
 type SortOption = "recent" | "oldest" | "most_messages" | "least_messages" | "name_az" | "name_za";
 type FilterOption = "all" | "has_media" | "10plus" | "100plus";
@@ -13,9 +14,65 @@ interface ConversationListProps {
   refreshTrigger?: number;
 }
 
+const ConversationListItem = React.memo(({ 
+  conversation: c, 
+  isSelected, 
+  onSelect 
+}: { 
+  conversation: Conversation; 
+  isSelected: boolean; 
+  onSelect: (id: string) => void;
+}) => (
+  <button
+    onClick={() => onSelect(c.id)}
+    className={cn(
+      "w-full text-left px-5 py-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-all flex flex-col gap-1.5 border-b border-surface-100 dark:border-surface-800 relative group",
+      isSelected && "bg-brand-50 dark:bg-brand-900/20"
+    )}
+  >
+    {/* Selection indicator */}
+    {isSelected && (
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-500" />
+    )}
+
+    <div className="flex justify-between items-start gap-2">
+      <span className={cn(
+        "font-semibold truncate flex-1 leading-tight transition-colors",
+        isSelected
+          ? "text-brand-600 dark:text-brand-400"
+          : "text-surface-800 dark:text-surface-200 group-hover:text-brand-600 dark:group-hover:text-brand-400"
+      )}>
+        {c.display_name || c.id}
+      </span>
+      <span className={cn(
+        "text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center",
+        isSelected
+          ? "bg-brand-500 text-white"
+          : "bg-surface-200 dark:bg-surface-700 text-surface-500 dark:text-surface-400"
+      )}>
+        {c.message_count}
+      </span>
+    </div>
+
+    <div className="flex justify-between items-center w-full">
+      <p className="text-xs text-surface-400 truncate max-w-[180px]">
+        {c.participants.join(", ")}
+      </p>
+      {c.last_event_at && (
+        <span className="text-[10px] font-medium text-surface-400">
+          {new Date(c.last_event_at).toLocaleDateString()}
+        </span>
+      )}
+    </div>
+  </button>
+));
+
+ConversationListItem.displayName = "ConversationListItem";
+
 export function ConversationList({ onSelect, selectedId, refreshTrigger }: ConversationListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
@@ -39,7 +96,7 @@ export function ConversationList({ onSelect, selectedId, refreshTrigger }: Conve
 
   const processed = useMemo(() => {
     let result = conversations.filter(c =>
-      (c.display_name || c.id).toLowerCase().includes(search.toLowerCase())
+      (c.display_name || c.id).toLowerCase().includes(deferredSearch.toLowerCase())
     );
 
     // Filter
@@ -78,7 +135,7 @@ export function ConversationList({ onSelect, selectedId, refreshTrigger }: Conve
     });
 
     return result;
-  }, [conversations, search, sortBy, filterBy]);
+  }, [conversations, deferredSearch, sortBy, filterBy]);
 
   const sortLabel: Record<SortOption, string> = {
     recent: "Recent",
@@ -202,14 +259,9 @@ export function ConversationList({ onSelect, selectedId, refreshTrigger }: Conve
 
       {/* List */}
       <div className="flex-1 overflow-hidden">
-        {loading && conversations.length === 0 && (
-          <div className="p-10 flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-surface-200 dark:border-surface-700 border-t-brand-500 rounded-full animate-spin" />
-            <p className="text-xs text-surface-400">Loading conversations...</p>
-          </div>
-        )}
-
-        {!loading && processed.length === 0 && conversations.length === 0 && (
+        {loading && conversations.length === 0 ? (
+          <ConversationListSkeleton />
+        ) : !loading && processed.length === 0 && conversations.length === 0 ? (
           <div className="p-10 text-center space-y-3">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center">
               <svg className="w-8 h-8 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -219,9 +271,7 @@ export function ConversationList({ onSelect, selectedId, refreshTrigger }: Conve
             <p className="text-surface-500 font-semibold text-sm">No conversations yet</p>
             <p className="text-surface-400 text-xs">Import a Snapchat export to see your chats.</p>
           </div>
-        )}
-
-        {!loading && processed.length === 0 && conversations.length > 0 && (
+        ) : !loading && processed.length === 0 && conversations.length > 0 ? (
           <div className="p-10 text-center space-y-3">
             <p className="text-surface-500 font-semibold text-sm">
               {search ? `No matches for "${search}"` : "No conversations match filters"}
@@ -235,9 +285,7 @@ export function ConversationList({ onSelect, selectedId, refreshTrigger }: Conve
               </button>
             )}
           </div>
-        )}
-
-        {processed.length > 0 && (
+        ) : (
           <Virtuoso
             style={{ height: "100%" }}
             totalCount={processed.length}
@@ -245,50 +293,12 @@ export function ConversationList({ onSelect, selectedId, refreshTrigger }: Conve
             itemContent={(index) => {
               const c = processed[index];
               if (!c) return null;
-              const isSelected = selectedId === c.id;
               return (
-                <button
-                  onClick={() => onSelect(c.id)}
-                  className={cn(
-                    "w-full text-left px-5 py-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-all flex flex-col gap-1.5 border-b border-surface-100 dark:border-surface-800 relative group",
-                    isSelected && "bg-brand-50 dark:bg-brand-900/20"
-                  )}
-                >
-                  {/* Selection indicator */}
-                  {isSelected && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-500" />
-                  )}
-
-                  <div className="flex justify-between items-start gap-2">
-                    <span className={cn(
-                      "font-semibold truncate flex-1 leading-tight transition-colors",
-                      isSelected
-                        ? "text-brand-600 dark:text-brand-400"
-                        : "text-surface-800 dark:text-surface-200 group-hover:text-brand-600 dark:group-hover:text-brand-400"
-                    )}>
-                      {c.display_name || c.id}
-                    </span>
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center",
-                      isSelected
-                        ? "bg-brand-500 text-white"
-                        : "bg-surface-200 dark:bg-surface-700 text-surface-500 dark:text-surface-400"
-                    )}>
-                      {c.message_count}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center w-full">
-                    <p className="text-xs text-surface-400 truncate max-w-[180px]">
-                      {c.participants.join(", ")}
-                    </p>
-                    {c.last_event_at && (
-                      <span className="text-[10px] font-medium text-surface-400">
-                        {new Date(c.last_event_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </button>
+                <ConversationListItem 
+                  conversation={c} 
+                  isSelected={selectedId === c.id} 
+                  onSelect={onSelect} 
+                />
               );
             }}
           />
