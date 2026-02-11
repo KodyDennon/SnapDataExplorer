@@ -1,3 +1,10 @@
+# [0.22.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.21.0...v0.22.0) (2026-02-11)
+
+
+### Features
+
+* stabilize cross-platform release workflow with correct dependencies and M1 runners ([dbcb5a2](https://github.com/KodyDennon/SnapDataExplorer/commit/dbcb5a2c38ae4085dce9fa6b1c271c6c9b48b146))
+
 # [0.21.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.20.0...v0.21.0) (2026-02-11)
 
 
