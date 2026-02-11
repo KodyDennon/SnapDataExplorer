@@ -1,3 +1,10 @@
+# [0.21.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.20.0...v0.21.0) (2026-02-11)
+
+
+### Features
+
+* significantly accelerate cross-platform build and release pipeline ([1f85ccb](https://github.com/KodyDennon/SnapDataExplorer/commit/1f85ccbfa7219032dcb7bba34fcb66316e370441))
+
 # [0.20.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.19.0...v0.20.0) (2026-02-11)
 
 
