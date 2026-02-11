@@ -42,7 +42,7 @@ jobs:
           - os: macos-14 # M1 Runner
             target: aarch64-apple-darwin
             label: macOS-Apple-Silicon
-          - os: macos-13 # Intel Runner
+          - os: macos-15-intel # Intel Runner (macos-13 removed Dec 2025)
             target: x86_64-apple-darwin
             label: macOS-Intel
           - os: ubuntu-22.04
@@ -128,7 +128,7 @@ jobs:
           VERSION_CLEAN=${VERSION#v}
           BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
           
-          if [ "${{ matrix.os }}" == "macos-14" ] || [ "${{ matrix.os }}" == "macos-13" ]; then
+          if [ "${{ matrix.os }}" == "macos-14" ] || [ "${{ matrix.os }}" == "macos-15-intel" ]; then
             find "$BUNDLE_PATH/dmg" -name "*.dmg" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.dmg" \; 2>/dev/null || true
             find "$BUNDLE_PATH/macos" -name "*.tar.gz" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.app.tar.gz" \; 2>/dev/null || true
             find "$BUNDLE_PATH/macos" -name "*.tar.gz.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.app.tar.gz.sig" \; 2>/dev/null || true
