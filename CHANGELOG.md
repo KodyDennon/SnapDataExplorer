@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.16.1...v0.17.0) (2026-02-11)
+
+
+### Features
+
+* implement intelligent multi-part export grouping and unified extraction ([41df9be](https://github.com/KodyDennon/SnapDataExplorer/commit/41df9be336f7104338b0f52e24fdad9ef4fc6d1c))
+
 ## [0.16.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.16.0...v0.16.1) (2026-02-11)
 
 
