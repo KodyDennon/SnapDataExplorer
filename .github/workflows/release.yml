@@ -189,8 +189,8 @@ jobs:
           
           # Extract notes from CHANGELOG.md for the specific version
           # It looks for the section between the current version header and the next version header
-          # Format: ## [0.21.0](...) (Date)
-          EXTRACTED_NOTES=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '1d;$d' | sed '$d')
+          # Format: ## [0.21.0](...) (Date) OR ## 0.21.0 (Date)
+          EXTRACTED_NOTES=$(sed -n "/## \[*${VERSION}\]/,/## \[*[0-9]/p" CHANGELOG.md | sed '1d;$d')
           
           if [ -z "$EXTRACTED_NOTES" ]; then
             EXTRACTED_NOTES="Release $TAG_VERSION. See CHANGELOG.md for full details."
