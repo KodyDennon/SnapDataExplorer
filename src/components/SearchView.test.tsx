@@ -38,8 +38,10 @@ describe('SearchView', () => {
     fireEvent.click(screen.getByText('Search'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Found 1 matching events/i)).toBeInTheDocument();
-    });
+      // Use a more flexible matcher because the text might be split across multiple nodes
+      // and increase timeout to account for AnimatePresence mode="wait" delays
+      expect(screen.getByText((content) => content.includes('Found 1 matching events'))).toBeInTheDocument();
+    }, { timeout: 3000 });
     expect(screen.getByText('Hello world')).toBeInTheDocument();
   });
 
