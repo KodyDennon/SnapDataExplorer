@@ -27,9 +27,20 @@ impl MediaLinker {
         let mut file_count = 0;
         let mut id_indexed = 0;
 
-        if let Ok(entries) = fs::read_dir(media_dir) {
+        self.scan_recursive(media_dir, &mut file_count, &mut id_indexed);
+
+        log::info!("MediaLinker: indexed {} files ({} by ID) recursively", file_count, id_indexed);
+        log::debug!("MediaLinker: indexed from {:?}", media_dir);
+    }
+
+    fn scan_recursive(&mut self, dir: &Path, file_count: &mut usize, id_indexed: &mut usize) {
+        if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
+                if path.is_dir() {
+                    self.scan_recursive(&path, file_count, id_indexed);
+                    continue;
+                }
                 if !path.is_file() {
                     continue;
                 }
@@ -39,7 +50,7 @@ impl MediaLinker {
                     None => continue,
                 };
 
-                file_count += 1;
+                *file_count += 1;
 
                 // Extract media ID: filename format is "YYYY-MM-DD_<MEDIA_ID>.<ext>"
                 // The ID is everything between the first '_' and the last '.'
@@ -56,18 +67,12 @@ impl MediaLinker {
                             log::warn!("MediaLinker: canonicalize failed for {:?}: {}", path, e);
                             path.clone()
                         });
-                        if let Some(existing) = self.id_map.get(media_id) {
-                            log::debug!("MediaLinker: ID collision for '{}': {:?} vs {:?}", media_id, existing, abs_path);
-                        }
                         self.id_map.insert(media_id.to_string(), abs_path);
-                        id_indexed += 1;
+                        *id_indexed += 1;
                     }
                 }
             }
         }
-
-        log::info!("MediaLinker: indexed {} files ({} by ID)", file_count, id_indexed);
-        log::debug!("MediaLinker: indexed from {:?}", media_dir);
     }
 
     pub fn link_media(&mut self, events: &mut [Event]) {

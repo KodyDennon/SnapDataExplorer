@@ -23,6 +23,8 @@ impl ZipExtractor {
 
         let total_parts = zip_paths.len();
         let mut total_extracted_files = 0u64;
+        let mut total_bytes: u64 = 0;
+        const MAX_TOTAL_SIZE: u64 = 500 * 1024 * 1024 * 1024; // 500GB safety limit
 
         for (part_idx, zip_path) in zip_paths.iter().enumerate() {
             log::info!("ZipExtractor: extracting part {}/{}: {:?}", part_idx + 1, total_parts, zip_path);
@@ -43,6 +45,14 @@ impl ZipExtractor {
                 let mut file = archive.by_index(i).map_err(|e| {
                     AppError::Parsing(format!("Failed to read zip entry {} in {:?}: {}", i, zip_path, e))
                 })?;
+
+                total_bytes += file.size();
+                if total_bytes > MAX_TOTAL_SIZE {
+                    return Err(AppError::Validation(format!(
+                        "Total extraction would exceed {}GB size limit.",
+                        MAX_TOTAL_SIZE / (1024 * 1024 * 1024)
+                    )));
+                }
 
                 let outpath = match file.enclosed_name() {
                     Some(path) => extraction_path.join(path),
