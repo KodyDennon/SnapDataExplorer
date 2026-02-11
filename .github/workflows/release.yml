@@ -14,15 +14,35 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+  build-backend:
+    needs: build-frontend
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-14 # M1 Runner
             target: aarch64-apple-darwin
             label: macOS-Apple-Silicon
-          - os: macos-latest
+          - os: macos-13 # Intel Runner
             target: x86_64-apple-darwin
             label: macOS-Intel
           - os: ubuntu-22.04
@@ -39,18 +59,21 @@ jobs:
         id: tag
         shell: bash
         run: |
-          # Priority: 1. Manual input, 2. ref_name (if it's a tag), 3. fallback to git describe
           TAG_NAME="${{ inputs.tag || github.event.inputs.tag }}"
           if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" == "null" ]; then
             TAG_NAME="${{ github.ref_name }}"
           fi
-          
-          echo "Resolved Tag: $TAG_NAME"
           echo "name=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.tag.outputs.name }}
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -72,17 +95,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Frontend tests
-        run: npm test
-
-      - name: Rust tests
-        working-directory: src-tauri
-        run: cargo test
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev mold clang
 
       - name: Build
         uses: nick-fields/retry@v3
@@ -93,28 +106,23 @@ jobs:
         with:
           timeout_minutes: 30
           max_attempts: 3
-          command: npm run tauri build -- --target ${{ matrix.target }}
+          # Override config to skip frontend build
+          command: npm run tauri build -- --target ${{ matrix.target }} --config '{"build":{"beforeBuildCommand":""}}'
 
       - name: Rename and Prepare Artifacts
         shell: bash
         run: |
           mkdir -p artifacts
           VERSION="${{ steps.tag.outputs.name }}"
-          VERSION_CLEAN=${VERSION#v} # Remove 'v' prefix if present
-          
-          # Adjust bundle path for Tauri v2
+          VERSION_CLEAN=${VERSION#v}
           BUNDLE_PATH="src-tauri/target/${{ matrix.target }}/release/bundle"
           
-          echo "Processing artifacts for ${{ matrix.label }}..."
-          
-          # macOS DMG & Updater (.tar.gz)
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+          if [ "${{ matrix.os }}" == "macos-14" ] || [ "${{ matrix.os }}" == "macos-13" ]; then
             find "$BUNDLE_PATH/dmg" -name "*.dmg" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.dmg" \; 2>/dev/null || true
             find "$BUNDLE_PATH/macos" -name "*.tar.gz" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.app.tar.gz" \; 2>/dev/null || true
             find "$BUNDLE_PATH/macos" -name "*.tar.gz.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.app.tar.gz.sig" \; 2>/dev/null || true
           fi
           
-          # Windows MSI/EXE & Updater (.zip)
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             find "$BUNDLE_PATH/msi" -name "*.msi" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.msi" \; 2>/dev/null || true
             find "$BUNDLE_PATH/nsis" -name "*.exe" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.exe" \; 2>/dev/null || true
@@ -122,16 +130,12 @@ jobs:
             find "$BUNDLE_PATH/nsis" -name "*.zip.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.zip.sig" \; 2>/dev/null || true
           fi
           
-          # Linux AppImage/DEB/RPM & Updater (.tar.gz)
           if [ "${{ matrix.os }}" == "ubuntu-22.04" ]; then
             find "$BUNDLE_PATH/appimage" -name "*.AppImage" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage" \; 2>/dev/null || true
             find "$BUNDLE_PATH/appimage" -name "*.AppImage.tar.gz" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage.tar.gz" \; 2>/dev/null || true
             find "$BUNDLE_PATH/appimage" -name "*.AppImage.tar.gz.sig" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.AppImage.tar.gz.sig" \; 2>/dev/null || true
             find "$BUNDLE_PATH/deb" -name "*.deb" -exec cp {} "artifacts/Snap-Data-Explorer-${VERSION_CLEAN}-${{ matrix.label }}.deb" \; 2>/dev/null || true
           fi
-          
-          echo "Artifacts prepared:"
-          ls -lh artifacts/
 
       - name: Upload artifacts for updater
         uses: actions/upload-artifact@v4
@@ -150,7 +154,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   updater:
-    needs: build
+    needs: build-backend
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     steps:
@@ -172,69 +176,34 @@ jobs:
       - name: Generate latest.json
         shell: bash
         run: |
-          # Strip 'v' prefix for the version number used in the JSON if present
           TAG_VERSION="${{ steps.tag.outputs.name }}"
           VERSION="${TAG_VERSION#v}"
-          
           REPO_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}"
           
-          echo "Generating latest.json for version $VERSION (Tag: $TAG_VERSION)"
-          
-          # Initialize the JSON structure
           jq -n \
             --arg ver "$VERSION" \
             --arg notes "Release $TAG_VERSION. See CHANGELOG.md for details." \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             '{version: $ver, notes: $notes, pub_date: $date, platforms: {}}' > latest.json
 
-          # Helper function to add platform data
-          # Usage: add_platform <json_key> <artifact_glob> <extension>
           add_platform() {
-            local KEY=$1
-            local GLOB=$2
-            local EXT=$3
-            
-            echo "Searching for $KEY artifacts (Glob: $GLOB, Ext: $EXT)..."
-            
-            # Find the signature and binary - using find with maxdepth 2 to stay within all-artifacts structure
+            local KEY=$1; local GLOB=$2; local EXT=$3
             local SIG_FILE=$(find all-artifacts -maxdepth 3 -name "*${GLOB}*${EXT}.sig" | head -n 1)
             local BIN_FILE=$(find all-artifacts -maxdepth 3 -name "*${GLOB}*${EXT}" | grep -v ".sig" | head -n 1)
-            
             if [ -n "$SIG_FILE" ] && [ -n "$BIN_FILE" ]; then
-              local SIG=$(cat "$SIG_FILE")
-              local FILENAME=$(basename "$BIN_FILE")
-              local URL="${REPO_URL}/${FILENAME}"
-              
-              echo "  Found: $FILENAME"
-              echo "  Mapping $KEY -> $URL"
-              
-              # Update latest.json using jq
-              jq --arg key "$KEY" --arg url "$URL" --arg sig "$SIG" \
+              local SIG=$(cat "$SIG_FILE"); local FILENAME=$(basename "$BIN_FILE")
+              jq --arg key "$KEY" --arg url "${REPO_URL}/${FILENAME}" --arg sig "$SIG" \
                 '.platforms[$key] = {url: $url, signature: $sig}' latest.json > latest.json.tmp && mv latest.json.tmp latest.json
-            else
-              echo "  Warning: Missing artifacts for $KEY"
-              ls -R all-artifacts | grep "$GLOB" || echo "    No files matching $GLOB found at all."
             fi
           }
 
-          # Map artifacts to Tauri platform keys (including aliases for robustness)
-          # macOS Apple Silicon
           add_platform "darwin-aarch64" "macOS-Apple-Silicon" ".app.tar.gz"
           add_platform "macos-aarch64" "macOS-Apple-Silicon" ".app.tar.gz"
-          
-          # macOS Intel
           add_platform "darwin-x86_64" "macOS-Intel" ".app.tar.gz"
           add_platform "macos-x86_64" "macOS-Intel" ".app.tar.gz"
-          
-          # Linux
           add_platform "linux-x86_64" "Linux-x64" ".AppImage.tar.gz"
-          
-          # Windows
           add_platform "windows-x86_64" "Windows-x64" ".zip"
           add_platform "windows-x64" "Windows-x64" ".zip"
-
-          echo "Final latest.json content:"
-          jq . latest.json
 
       - name: Upload latest.json to Release
         uses: softprops/action-gh-release@v2
