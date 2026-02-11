@@ -1,3 +1,9 @@
+## [0.24.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.24.0...v0.24.1) (2026-02-11)
+
+### Bug Fixes
+
+* update legacy asset protocol to convertFileSrc in ChillView ([832f17d](https://github.com/KodyDennon/SnapDataExplorer/commit/832f17d2cd221f0a082d297cc4a2334676c5fd65))
+
 ## [0.24.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.23.2...v0.24.0) (2026-02-11)
 
 ### Features
