@@ -113,11 +113,11 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                 </div>
               ) : update ? (
                 <div className="space-y-4">
-                  <div className="p-3 rounded-xl bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800">
-                    <p className="text-xs font-bold text-surface-400 mb-1 uppercase tracking-widest text-center">Release Notes</p>
-                    <p className="text-sm text-surface-600 dark:text-surface-300 italic line-clamp-3">
+                  <div className="p-4 rounded-xl bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800">
+                    <p className="text-xs font-black text-surface-400 mb-2 uppercase tracking-widest text-center border-b border-surface-100 dark:border-surface-800 pb-2">What's New in v{update.version}</p>
+                    <div className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto custom-scrollbar pr-2">
                       {update.body || "Performance improvements and bug fixes."}
-                    </p>
+                    </div>
                   </div>
                   <button
                     onClick={installUpdate}
