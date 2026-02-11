@@ -1,3 +1,9 @@
+## [0.23.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.23.0...v0.23.1) (2026-02-11)
+
+### Bug Fixes
+
+* robust cross-platform tauri config handling in CI/CD ([b1584ab](https://github.com/KodyDennon/SnapDataExplorer/commit/b1584ab63b4472ff0a5a27b2ae39f1884c1b1ef7))
+
 ## [0.23.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.22.0...v0.23.0) (2026-02-11)
 
 ### Features
