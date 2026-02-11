@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.18.0...v0.19.0) (2026-02-11)
+
+
+### Features
+
+* audit and stabilize ingestion for large-scale production use ([bd9cbee](https://github.com/KodyDennon/SnapDataExplorer/commit/bd9cbeeb11b38ee5dcc565282424cae72de3d93b))
+
 # [0.18.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.17.0...v0.18.0) (2026-02-11)
 
 
