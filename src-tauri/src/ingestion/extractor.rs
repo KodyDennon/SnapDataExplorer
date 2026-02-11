@@ -14,6 +14,7 @@ impl ZipExtractor {
         export_id: &str,
         app_handle: &AppHandle
     ) -> AppResult<PathBuf> {
+        let start_time = std::time::Instant::now();
         log::info!("ZipExtractor: starting extraction of {} part(s)", zip_paths.len());
         
         let extraction_path = target_dir.join(export_id);
@@ -93,7 +94,8 @@ impl ZipExtractor {
             }
         }
 
-        log::info!("ZipExtractor: extraction complete. Total files: {}", total_extracted_files);
+        let duration = start_time.elapsed();
+        log::info!("ZipExtractor: extraction complete in {:?}. Total files: {}", duration, total_extracted_files);
         Ok(extraction_path)
     }
 }
