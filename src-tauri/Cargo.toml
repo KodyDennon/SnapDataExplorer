@@ -1,6 +1,6 @@
 [package]
 name = "snap-data-explorer-app"
-version = "0.23.1"
+version = "0.23.2"
 description = "Privacy-first desktop app for exploring Snapchat data exports"
 authors = ["Kody Dennon"]
 edition = "2021"

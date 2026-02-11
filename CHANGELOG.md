@@ -1,3 +1,9 @@
+## [0.23.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.23.1...v0.23.2) (2026-02-11)
+
+### Bug Fixes
+
+* replace deprecated macos-13 runner with macos-15-intel in release workflow ([3b1f15b](https://github.com/KodyDennon/SnapDataExplorer/commit/3b1f15be84fae257e561e6f75f457faa727f33cf))
+
 ## [0.23.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.23.0...v0.23.1) (2026-02-11)
 
 ### Bug Fixes
