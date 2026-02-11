@@ -23,9 +23,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: npm ci
-      - name: Build frontend
+      - name: Build frontend assets
         run: npm run build
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
@@ -69,17 +69,20 @@ jobs:
         with:
           ref: ${{ steps.tag.outputs.name }}
 
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: dist
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -106,8 +109,8 @@ jobs:
         with:
           timeout_minutes: 30
           max_attempts: 3
-          # Override config to skip frontend build
-          command: npm run tauri build -- --target ${{ matrix.target }} --config '{"build":{"beforeBuildCommand":""}}'
+          # Override config to skip frontend build since we downloaded it
+          command: npx tauri build --target ${{ matrix.target }} --config '{"build":{"beforeBuildCommand":""}}'
 
       - name: Rename and Prepare Artifacts
         shell: bash
