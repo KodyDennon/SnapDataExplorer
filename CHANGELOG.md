@@ -1,3 +1,10 @@
+# [0.16.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.15.0...v0.16.0) (2026-02-11)
+
+
+### Features
+
+* enhance UI/UX and rendering performance across the application ([55e8f2d](https://github.com/KodyDennon/SnapDataExplorer/commit/55e8f2d4e7a9b19eb7c3d12c0f994dda05c40d17))
+
 # [0.15.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.14.3...v0.15.0) (2026-02-10)
 
 
