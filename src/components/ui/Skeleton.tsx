@@ -43,3 +43,24 @@ export function CardSkeleton() {
     </div>
   );
 }
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-6 w-96" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    </div>
+  );
+}

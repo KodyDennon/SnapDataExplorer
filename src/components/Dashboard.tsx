@@ -4,7 +4,7 @@ import { ExportSet, ExportStats, IngestionProgress, ValidationReport } from "../
 import { Card, Badge, Button } from "./ui";
 import { cn } from "../lib/utils";
 import { ViewMode } from "./ui/ModeToggle";
-import { CardSkeleton, Skeleton } from "./ui/Skeleton";
+import { DashboardSkeleton } from "./ui/Skeleton";
 import { 
   BarChart3, 
   Users, 
@@ -52,21 +52,8 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
 
   if (loading && currentExport && !progress) {
     return (
-      <div className="flex-1 p-8 lg:p-12 overflow-y-auto bg-surface-50 dark:bg-surface-950 space-y-8">
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-6 w-96" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
+      <div className="flex-1 p-8 lg:p-12 overflow-y-auto bg-surface-50 dark:bg-surface-950">
+        <DashboardSkeleton />
       </div>
     );
   }
