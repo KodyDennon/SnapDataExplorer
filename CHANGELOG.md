@@ -1,3 +1,9 @@
+## [0.25.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.25.0...v0.25.1) (2026-02-13)
+
+### Bug Fixes
+
+* simplify CI to run tests and clippy only ([6e88b04](https://github.com/KodyDennon/SnapDataExplorer/commit/6e88b043703612288dca2e3a2605ccffd06548e3))
+
 ## [0.25.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.24.1...v0.25.0) (2026-02-11)
 
 ### Features
