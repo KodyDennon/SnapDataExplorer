@@ -1,3 +1,9 @@
+## [0.25.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.24.1...v0.25.0) (2026-02-11)
+
+### Features
+
+* major stability and performance overhaul ([40ace71](https://github.com/KodyDennon/SnapDataExplorer/commit/40ace711bc2cc75c2f861721589696faee756af9))
+
 ## [0.24.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.24.0...v0.24.1) (2026-02-11)
 
 ### Bug Fixes
