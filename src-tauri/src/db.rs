@@ -28,7 +28,6 @@ impl DatabaseManager {
                     PRAGMA temp_store=MEMORY;
                 ",
                 )
-                .map_err(Into::into)
             });
 
         let pool = r2d2::Pool::builder()

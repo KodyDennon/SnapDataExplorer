@@ -176,10 +176,8 @@ impl ExportDetector {
 
         if has_index && has_chat && has_media {
             ValidationStatus::Valid
-        } else if has_index {
+        } else if has_index || !paths.is_empty() {
             ValidationStatus::Incomplete
-        } else if !paths.is_empty() {
-            ValidationStatus::Incomplete // At least we found something
         } else {
             ValidationStatus::Unknown
         }
@@ -229,9 +227,7 @@ impl ExportDetector {
 
         if has_index && has_chat && has_media {
             ValidationStatus::Valid
-        } else if has_index {
-            ValidationStatus::Incomplete
-        } else if !paths.is_empty() {
+        } else if has_index || !paths.is_empty() {
             ValidationStatus::Incomplete
         } else {
             ValidationStatus::Unknown
