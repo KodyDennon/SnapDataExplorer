@@ -1,6 +1,7 @@
 use crate::db::DatabaseManager;
 use crate::error::AppResult;
 use crate::models::{DownloadStatus, Memory};
+use crate::storage::StorageManager;
 use futures_util::StreamExt;
 use reqwest::Client;
 use serde::Serialize;
@@ -35,6 +36,26 @@ impl MemoryDownloader {
     }
 
     pub async fn download_memory(&self, mut memory: Memory, storage_root: PathBuf) -> AppResult<()> {
+        // Check disk space before starting (require > 500MB buffer)
+        match StorageManager::get_disk_space(storage_root.clone()) {
+            Ok(info) => {
+                if info.available_bytes < 500 * 1024 * 1024 {
+                    let msg = format!("Insufficient disk space. Available: {} MB, Required Buffer: 500 MB", info.available_bytes / (1024 * 1024));
+                    log::error!("{}", msg);
+                    
+                    memory.download_status = DownloadStatus::Failed;
+                    self.db.batch_insert_memories(&[memory])?;
+                    
+                    self.app_handle.emit("download-error", msg.clone()).ok();
+                    return Err(crate::error::AppError::Generic(msg));
+                }
+            }
+            Err(e) => {
+                log::warn!("Could not check disk space: {}", e);
+                // We proceed with caution if check fails, but log it
+            }
+        }
+
         let url = match &memory.download_url {
             Some(url) => url,
             None => {
@@ -159,6 +180,10 @@ impl MemoryDownloader {
         for memory in pending {
             if let Err(e) = self.download_memory(memory, storage_root.clone()).await {
                 log::error!("Failed to download memory: {}", e);
+                // Stop batch on disk space error
+                if e.to_string().contains("Insufficient disk space") {
+                    break;
+                }
             }
         }
 

@@ -29,7 +29,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, State};
 
 /// Flag to prevent concurrent DB access during reimport/reset operations.
 static DB_MAINTENANCE: AtomicBool = AtomicBool::new(false);
@@ -47,15 +47,25 @@ fn db_path(app_handle: &tauri::AppHandle) -> AppResult<PathBuf> {
 }
 
 /// Get or initialize the shared DatabaseManager. Returns Arc so callers don't hold the lock.
-fn db_for_app(app_handle: &tauri::AppHandle) -> AppResult<Option<Arc<DatabaseManager>>> {
+fn db_from_state(state: &State<'_, DbState>, app_handle: &tauri::AppHandle) -> AppResult<Option<Arc<DatabaseManager>>> {
     if DB_MAINTENANCE.load(Ordering::SeqCst) {
         return Err(AppError::Generic("Data is being reimported. Please wait.".into()));
     }
+
+    // Fast path: check if DB is already loaded
+    {
+        let guard = state.lock().map_err(|e| AppError::Generic(format!("DB lock poisoned: {}", e)))?;
+        if let Some(db) = guard.as_ref() {
+            return Ok(Some(db.clone()));
+        }
+    }
+
+    // Slow path: check filesystem and initialize
     let path = db_path(app_handle)?;
     if !path.exists() {
         return Ok(None);
     }
-    let state = app_handle.state::<DbState>();
+
     let mut guard = state.lock().map_err(|e| AppError::Generic(format!("DB lock poisoned: {}", e)))?;
     if guard.is_none() {
         *guard = Some(Arc::new(DatabaseManager::new(&path)?));
@@ -163,7 +173,10 @@ async fn reconstruct_from_path(
     );
 
     // Store original export info (preserves source_path and source_type for reimport)
-    database.insert_export(&original_export)?;
+    // Mark as Incomplete initially to prevent corruption if process fails mid-way
+    let mut processing_export = original_export.clone();
+    processing_export.validation_status = crate::models::ValidationStatus::Incomplete;
+    database.insert_export(&processing_export)?;
 
     // --- Phase: Friends Resolution ---
     app_handle
@@ -249,6 +262,10 @@ async fn reconstruct_from_path(
         log::warn!("{} chat files failed to parse", parse_failures);
     }
 
+    // Initialize set for O(1) lookups in subsequent phases
+    let mut convo_set: std::collections::HashSet<String> =
+        all_conversations.iter().map(|c| c.id.clone()).collect();
+
     // --- Phase: JSON Chat History (Media IDs source) ---
     app_handle
         .emit(
@@ -287,9 +304,8 @@ async fn reconstruct_from_path(
                     }
                 }
 
-                let convo_set: std::collections::HashSet<String> =
-                    all_conversations.iter().map(|c| c.id.clone()).collect();
                 let mut new_convos = Vec::new();
+                let mut new_convo_ids = std::collections::HashSet::new();
                 let mut new_events = Vec::new();
 
                 for (convo_key, json_events) in json_conversations {
@@ -308,7 +324,7 @@ async fn reconstruct_from_path(
                             all_events[idx].metadata = json_event.metadata.clone();
                             merged_ids += 1;
                         } else {
-                            if !convo_set.contains(&convo_key) && !new_convos.iter().any(|c: &Conversation| c.id == convo_key) {
+                            if !convo_set.contains(&convo_key) && !new_convo_ids.contains(&convo_key) {
                                 let display_name = json_event.metadata.as_ref().and_then(|m| {
                                     serde_json::from_str::<serde_json::Value>(m)
                                         .ok()
@@ -322,6 +338,7 @@ async fn reconstruct_from_path(
                                     message_count: 0,
                                     has_media: false,
                                 });
+                                new_convo_ids.insert(convo_key.clone());
                             }
                             new_events.push(json_event);
                             new_events_added += 1;
@@ -331,6 +348,10 @@ async fn reconstruct_from_path(
 
                 all_conversations.extend(new_convos);
                 all_events.extend(new_events);
+                // Update convo_set for next phase
+                for id in new_convo_ids {
+                    convo_set.insert(id);
+                }
 
                 log::info!(
                     "JSON merge: {} events enriched with media IDs, {} new events added",
@@ -370,9 +391,14 @@ async fn reconstruct_from_path(
                     snap_conversations.len(),
                     snap_event_count
                 );
+                
+                // Ensure convo_set is up to date (it was updated after JSON merge)
+                if convo_set.is_empty() && !all_conversations.is_empty() {
+                     convo_set = all_conversations.iter().map(|c| c.id.clone()).collect();
+                }
+
                 for (convo_key, events) in snap_conversations {
-                    let existing = all_conversations.iter().any(|c| c.id == convo_key);
-                    if !existing {
+                    if !convo_set.contains(&convo_key) {
                         all_conversations.push(Conversation {
                             id: convo_key.clone(),
                             display_name: None,
@@ -381,6 +407,7 @@ async fn reconstruct_from_path(
                             message_count: events.len() as i32,
                             has_media: false,
                         });
+                        convo_set.insert(convo_key.clone());
                     }
                     all_events.extend(events);
                 }
@@ -538,24 +565,32 @@ async fn reconstruct_from_path(
 }
 
 #[tauri::command]
-async fn get_conversations(app_handle: tauri::AppHandle) -> AppResult<Vec<Conversation>> {
-    match db_for_app(&app_handle)? {
+async fn get_conversations(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<Vec<Conversation>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_conversations(),
         None => Ok(Vec::new()),
     }
 }
 
 #[tauri::command]
-async fn get_conversation_name(conversation_id: String, app_handle: tauri::AppHandle) -> AppResult<Option<String>> {
-    match db_for_app(&app_handle)? {
+async fn get_conversation_name(
+    conversation_id: String,
+    state: State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<Option<String>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_conversation_name(&conversation_id),
         None => Ok(None),
     }
 }
 
 #[tauri::command]
-async fn get_messages(conversation_id: String, app_handle: tauri::AppHandle) -> AppResult<Vec<Event>> {
-    match db_for_app(&app_handle)? {
+async fn get_messages(
+    conversation_id: String,
+    state: State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<Vec<Event>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_messages(&conversation_id),
         None => Ok(Vec::new()),
     }
@@ -566,9 +601,10 @@ async fn get_messages_page(
     conversation_id: String,
     offset: i32,
     limit: i32,
+    state: State<'_, DbState>,
     app_handle: tauri::AppHandle,
 ) -> AppResult<MessagePage> {
-    match db_for_app(&app_handle)? {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_messages_page(&conversation_id, offset, limit),
         None => Ok(MessagePage {
             messages: Vec::new(),
@@ -579,16 +615,16 @@ async fn get_messages_page(
 }
 
 #[tauri::command]
-async fn get_export_stats(app_handle: tauri::AppHandle) -> AppResult<Option<ExportStats>> {
-    match db_for_app(&app_handle)? {
+async fn get_export_stats(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<Option<ExportStats>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => Ok(Some(db.get_export_stats()?)),
         None => Ok(None),
     }
 }
 
 #[tauri::command]
-async fn get_exports(app_handle: tauri::AppHandle) -> AppResult<Vec<ExportSet>> {
-    match db_for_app(&app_handle)? {
+async fn get_exports(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<Vec<ExportSet>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_exports(),
         None => Ok(Vec::new()),
     }
@@ -598,6 +634,7 @@ async fn get_exports(app_handle: tauri::AppHandle) -> AppResult<Vec<ExportSet>> 
 async fn search_messages(
     query: String,
     limit: Option<i32>,
+    state: State<'_, DbState>,
     app_handle: tauri::AppHandle,
 ) -> AppResult<Vec<SearchResult>> {
     if query.len() > 500 {
@@ -605,15 +642,19 @@ async fn search_messages(
             "Search query too long (max 500 characters)".into(),
         ));
     }
-    match db_for_app(&app_handle)? {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.search_messages(&query, limit.unwrap_or(50)),
         None => Ok(Vec::new()),
     }
 }
 
 #[tauri::command]
-async fn get_memories(export_id: Option<String>, app_handle: tauri::AppHandle) -> AppResult<Vec<Memory>> {
-    match db_for_app(&app_handle)? {
+async fn get_memories(
+    export_id: Option<String>,
+    state: State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<Vec<Memory>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_memories(export_id.as_deref()),
         None => Ok(Vec::new()),
     }
@@ -623,9 +664,10 @@ async fn get_memories(export_id: Option<String>, app_handle: tauri::AppHandle) -
 async fn get_unified_media_stream(
     limit: Option<i32>,
     offset: Option<i32>,
+    state: State<'_, DbState>,
     app_handle: tauri::AppHandle,
 ) -> AppResult<PaginatedMedia> {
-    match db_for_app(&app_handle)? {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_unified_media_stream(limit.unwrap_or(100), offset.unwrap_or(0)),
         None => Ok(PaginatedMedia {
             items: Vec::new(),
@@ -639,17 +681,22 @@ async fn get_unified_media_stream(
 async fn get_message_index_at_date(
     conversation_id: String,
     date: String,
+    state: State<'_, DbState>,
     app_handle: tauri::AppHandle,
 ) -> AppResult<i32> {
-    match db_for_app(&app_handle)? {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_message_index_at_date(&conversation_id, &date),
         None => Ok(0),
     }
 }
 
 #[tauri::command]
-async fn get_activity_dates(conversation_id: String, app_handle: tauri::AppHandle) -> AppResult<Vec<String>> {
-    match db_for_app(&app_handle)? {
+async fn get_activity_dates(
+    conversation_id: String,
+    state: State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<Vec<String>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => db.get_activity_dates(&conversation_id),
         None => Ok(Vec::new()),
     }
@@ -660,6 +707,7 @@ async fn export_conversation(
     conversation_id: String,
     format: String,
     output_path: String,
+    state: State<'_, DbState>,
     app_handle: tauri::AppHandle,
 ) -> AppResult<()> {
     // Validate output path — must be under user-accessible directories
@@ -678,7 +726,7 @@ async fn export_conversation(
         return Err(AppError::Validation("Invalid output path".to_string()));
     }
 
-    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("No data imported yet".to_string()))?;
+    let db = db_from_state(&state, &app_handle)?.ok_or_else(|| AppError::Generic("No data imported yet".to_string()))?;
     let messages = db.get_messages(&conversation_id)?;
 
     let content = match format.as_str() {
@@ -709,8 +757,8 @@ async fn export_conversation(
 }
 
 #[tauri::command]
-async fn get_validation_report(app_handle: tauri::AppHandle) -> AppResult<Option<ValidationReport>> {
-    match db_for_app(&app_handle)? {
+async fn get_validation_report(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<Option<ValidationReport>> {
+    match db_from_state(&state, &app_handle)? {
         Some(db) => Ok(Some(db.get_validation_report()?)),
         None => Ok(None),
     }
@@ -748,9 +796,9 @@ async fn reset_data(app_handle: tauri::AppHandle) -> AppResult<()> {
 }
 
 #[tauri::command]
-async fn reimport_data(app_handle: tauri::AppHandle) -> AppResult<()> {
+async fn reimport_data(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<()> {
     // Read export info BEFORE setting maintenance flag
-    let stored_export = match db_for_app(&app_handle)? {
+    let stored_export = match db_from_state(&state, &app_handle)? {
         Some(db) => {
             let exports = db.get_exports()?;
             exports.into_iter().next()
@@ -817,19 +865,19 @@ async fn get_log_path(app_handle: tauri::AppHandle) -> AppResult<String> {
 }
 
 #[tauri::command]
-async fn set_storage_path(path: String, app_handle: tauri::AppHandle) -> AppResult<()> {
+async fn set_storage_path(path: String, state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<()> {
     let path_buf = PathBuf::from(&path);
     StorageManager::validate_path(path_buf.clone()).map_err(|e| AppError::Generic(e.to_string()))?;
 
-    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+    let db = db_from_state(&state, &app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
     db.set_setting("storage_path", &path)?;
     log::info!("Storage path set to: {}", path);
     Ok(())
 }
 
 #[tauri::command]
-async fn get_storage_path(app_handle: tauri::AppHandle) -> AppResult<Option<String>> {
-    let db = db_for_app(&app_handle)?;
+async fn get_storage_path(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<Option<String>> {
+    let db = db_from_state(&state, &app_handle)?;
     if let Some(db) = db {
         db.get_setting("storage_path")
     } else {
@@ -838,11 +886,15 @@ async fn get_storage_path(app_handle: tauri::AppHandle) -> AppResult<Option<Stri
 }
 
 #[tauri::command]
-async fn check_disk_space(path: Option<String>, app_handle: tauri::AppHandle) -> AppResult<DiskSpaceInfo> {
+async fn check_disk_space(
+    path: Option<String>,
+    state: State<'_, DbState>,
+    app_handle: tauri::AppHandle,
+) -> AppResult<DiskSpaceInfo> {
     let path_to_check = if let Some(p) = path {
         PathBuf::from(p)
     } else {
-        let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+        let db = db_from_state(&state, &app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
         let stored_path = db.get_setting("storage_path")?;
         match stored_path {
             Some(p) => PathBuf::from(p),
@@ -854,15 +906,15 @@ async fn check_disk_space(path: Option<String>, app_handle: tauri::AppHandle) ->
 }
 
 #[tauri::command]
-async fn download_all_memories(app_handle: tauri::AppHandle) -> AppResult<()> {
-    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+async fn download_all_memories(state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<()> {
+    let db = db_from_state(&state, &app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
     let downloader = MemoryDownloader::new(app_handle, db);
     downloader.download_all_pending().await
 }
 
 #[tauri::command]
-async fn download_memory(memory: Memory, app_handle: tauri::AppHandle) -> AppResult<()> {
-    let db = db_for_app(&app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
+async fn download_memory(memory: Memory, state: State<'_, DbState>, app_handle: tauri::AppHandle) -> AppResult<()> {
+    let db = db_from_state(&state, &app_handle)?.ok_or_else(|| AppError::Generic("Database not initialized".into()))?;
     let storage_path = db.get_setting("storage_path")?;
     let storage_root = match storage_path {
         Some(p) => PathBuf::from(p),

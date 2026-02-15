@@ -16,6 +16,17 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# 0. Check for Xcode CLI Tools
+if ! xcode-select -p &>/dev/null; then
+  echo "⚠️  Xcode Command Line Tools are missing."
+  echo "   These are required for compiling Rust dependencies."
+  echo "   Installing now..."
+  xcode-select --install
+  echo ""
+  echo "   Please follow the pop-up prompt to install the tools, then run this script again."
+  exit 1
+fi
+
 # 1. Check for Homebrew
 if ! command_exists brew; then
   echo "❌ Homebrew is not installed."

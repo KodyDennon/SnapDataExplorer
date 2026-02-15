@@ -10,6 +10,9 @@
   },
   "homepage": "https://kodydennon.github.io/SnapDataExplorer/",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "dev:web": "VITE_MOCK=true vite --host 0.0.0.0 --port 1420",
