@@ -486,6 +486,52 @@ impl DatabaseManager {
         Ok(exports)
     }
 
+    pub fn foreach_message<F>(&self, conversation_id: &str, mut f: F) -> AppResult<()>
+    where
+        F: FnMut(Event) -> AppResult<()>,
+    {
+        let conn = self.conn()?;
+        let mut stmt = conn.prepare(
+            "SELECT e.id, e.timestamp, e.sender, e.conversation_id, e.content, e.event_type, e.media_references, e.metadata, p.display_name
+             FROM events e
+             LEFT JOIN people p ON e.sender = p.username
+             WHERE e.conversation_id = ?1
+             ORDER BY e.timestamp ASC"
+        )?;
+
+        let event_iter = stmt.query_map([conversation_id], |row| {
+            let timestamp_str: String = row.get(1)?;
+            let timestamp = chrono::DateTime::parse_from_rfc3339(&timestamp_str)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .unwrap_or_else(|e| {
+                    log::warn!("Bad timestamp in DB: '{}': {}", timestamp_str, e);
+                    chrono::DateTime::<chrono::Utc>::MIN_UTC
+                });
+
+            let media_refs_json: String = row.get(6)?;
+            let media_references: Vec<std::path::PathBuf> = serde_json::from_str(&media_refs_json).unwrap_or_default();
+
+            Ok(Event {
+                id: row.get(0)?,
+                timestamp,
+                sender: row.get(2)?,
+                sender_name: row.get(8).ok(),
+                conversation_id: row.get(3)?,
+                content: row.get(4)?,
+                event_type: row.get(5)?,
+                media_references,
+                metadata: row.get(7)?,
+            })
+        })?;
+
+        for event in event_iter {
+            let event = event.map_err(|e| crate::error::AppError::Generic(format!("Database error during stream: {}", e)))?;
+            f(event)?;
+        }
+
+        Ok(())
+    }
+
     pub fn get_messages(&self, conversation_id: &str) -> AppResult<Vec<Event>> {
         let conn = self.conn()?;
         let mut stmt = conn.prepare(

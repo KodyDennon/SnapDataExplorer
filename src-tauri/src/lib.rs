@@ -727,32 +727,45 @@ async fn export_conversation(
     }
 
     let db = db_from_state(&state, &app_handle)?.ok_or_else(|| AppError::Generic("No data imported yet".to_string()))?;
-    let messages = db.get_messages(&conversation_id)?;
+    
+    let file = fs::File::create(&output_path)?;
+    let mut writer = std::io::BufWriter::new(file);
+    use std::io::Write;
 
-    let content = match format.as_str() {
-        "json" => serde_json::to_string_pretty(&messages).unwrap_or_else(|_| "[]".to_string()),
-        _ => {
-            let mut output = String::new();
-            output.push_str(&format!("Conversation: {}\n", conversation_id));
-            output.push_str(&format!("Messages: {}\n", messages.len()));
-            output.push_str("---\n\n");
-            for msg in &messages {
-                let sender = msg.sender_name.as_deref().unwrap_or(&msg.sender);
-                let time = msg.timestamp.format("%Y-%m-%d %H:%M:%S");
-                output.push_str(&format!(
-                    "[{}] {}: {}\n",
-                    time,
-                    sender,
-                    msg.content.as_deref().unwrap_or("")
-                ));
+    if format == "json" {
+        writer.write_all(b"[\n")?;
+        let mut first = true;
+        db.foreach_message(&conversation_id, |msg| {
+            if !first {
+                writer.write_all(b",\n")?;
             }
-            output
-        }
-    };
+            serde_json::to_writer(&mut writer, &msg).map_err(|e| AppError::Generic(e.to_string()))?;
+            first = false;
+            Ok(())
+        })?;
+        writer.write_all(b"\n]")?;
+    } else {
+        // Text format
+        let display_name = db.get_conversation_name(&conversation_id)?.unwrap_or_else(|| conversation_id.clone());
+        writer.write_all(format!("Conversation: {}\n", display_name).as_bytes())?;
+        writer.write_all(b"---\n\n")?;
+        
+        db.foreach_message(&conversation_id, |msg| {
+            let sender = msg.sender_name.as_deref().unwrap_or(&msg.sender);
+            let time = msg.timestamp.format("%Y-%m-%d %H:%M:%S");
+            let line = format!(
+                "[{}] {}: {}\n",
+                time,
+                sender,
+                msg.content.as_deref().unwrap_or("")
+            );
+            writer.write_all(line.as_bytes())?;
+            Ok(())
+        })?;
+    }
 
-    fs::write(&output_path, content)?;
-    log::info!("Exported conversation ({} messages)", messages.len());
-    log::debug!("Export target: {}", output_path);
+    writer.flush()?;
+    log::info!("Exported conversation to {}", output_path);
     Ok(())
 }
 
