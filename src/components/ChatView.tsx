@@ -22,12 +22,61 @@ import { AnimatePresence, motion } from "framer-motion";
 
 function MediaFallback({ type }: { type: "image" | "video" | "snap" | "snap-video" }) {
   return (
-    <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-slate-700">
+    <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-slate-700 aspect-square sm:aspect-auto h-full">
       <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{type} failed to load</span>
     </div>
   );
 }
+
+// Self-contained Media Component to prevent parent re-renders on error
+const MediaImage = React.memo(({ 
+  src, 
+  path, 
+  type, 
+  className, 
+  onClick 
+}: { 
+  src: string, 
+  path: string, 
+  type: "image" | "video" | "snap" | "snap-video", 
+  className?: string,
+  onClick: () => void 
+}) => {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return <MediaFallback type={type} />;
+  }
+
+  if (type === "image" || type === "snap") {
+    return (
+      <img
+        src={src}
+        alt="Media"
+        className={className}
+        loading="lazy"
+        onError={() => setError(true)}
+        onClick={onClick}
+      />
+    );
+  }
+
+  return (
+    <div className="relative cursor-pointer group/video" onClick={onClick}>
+      <video
+        src={src}
+        className={className}
+        preload="none"
+        onError={() => setError(true)}
+      />
+      <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/video:bg-black/40 transition-colors pointer-events-none">
+        {type.includes("snap") ? <Smartphone className="w-10 h-10 text-white" /> : <Play className="w-10 h-10 text-white fill-current" />}
+      </div>
+    </div>
+  );
+});
+MediaImage.displayName = "MediaImage";
 
 interface ChatViewProps {
   conversationId: string;
@@ -42,16 +91,12 @@ const MessageItem = React.memo(({
   isSameSender,
   showDateSep,
   onOpenMedia,
-  markFailed,
-  isMediaFailed,
   addToast
 }: {
   msg: Message,
   isSameSender: boolean,
   showDateSep: boolean,
   onOpenMedia: (ref: string) => void,
-  markFailed: (key: string) => void,
-  isMediaFailed: (key: string) => boolean,
   addToast: (type: Toast["type"], message: string) => void
 }) => {
   // Pre-compute media sources to avoid logic in render
@@ -120,37 +165,24 @@ const MessageItem = React.memo(({
               {msg.media_references.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {msg.media_references.map((ref_, i) => {
-                    const mediaKey = `${msg.id}-${i}`;
                     const src = mediaSources[i];
-                    if (isMediaFailed(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "image" : "video"} />;
+                    const isImg = isImageFile(ref_);
                     return (
                       <div
                         key={i}
-                        onClick={() => onOpenMedia(ref_)}
                         className="relative rounded-2xl overflow-hidden cursor-pointer group/media bg-slate-100 dark:bg-slate-800 aspect-square sm:aspect-auto"
                       >
-                        {isImageFile(ref_) ? (
-                          <img
-                            src={src}
-                            alt="Media"
-                            className="max-w-full max-h-80 rounded-xl object-contain group-hover/media:scale-105 transition-transform duration-500"
-                            loading="lazy"
-                            onError={() => markFailed(mediaKey)}
-                          />
-                        ) : (
-                          <div className="relative">
-                            <video
-                              src={src}
-                              className="max-w-full max-h-80 rounded-xl bg-black"
-                              preload="none"
-                              onError={() => markFailed(mediaKey)}
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/media:bg-black/40 transition-colors">
-                              <Play className="w-10 h-10 text-white fill-current" />
-                            </div>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity" />
+                        <MediaImage 
+                          src={src} 
+                          path={ref_} 
+                          type={isImg ? "image" : "video"} 
+                          onClick={() => onOpenMedia(ref_)}
+                          className={isImg 
+                            ? "max-w-full max-h-80 rounded-xl object-contain group-hover/media:scale-105 transition-transform duration-500" 
+                            : "max-w-full max-h-80 rounded-xl bg-black"
+                          }
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none" />
                       </div>
                     );
                   })}
@@ -172,37 +204,24 @@ const MessageItem = React.memo(({
               <div className="space-y-3">
                 <div className="grid grid-cols-1 gap-2">
                   {msg.media_references.map((ref_, i) => {
-                    const mediaKey = `${msg.id}-snap-${i}`;
                     const src = mediaSources[i];
-                    if (isMediaFailed(mediaKey)) return <MediaFallback key={i} type={isImageFile(ref_) ? "snap" : "snap-video"} />;
+                    const isImg = isImageFile(ref_);
                     return (
                       <div
                         key={i}
-                        onClick={() => onOpenMedia(ref_)}
                         className="relative rounded-2xl overflow-hidden cursor-pointer group/snap bg-slate-100 dark:bg-slate-800"
                       >
-                        {isImageFile(ref_) ? (
-                          <img
-                            src={src}
-                            alt="Snap"
-                            className="max-w-full max-h-96 rounded-2xl object-contain group-hover/snap:scale-105 transition-transform duration-500"
-                            loading="lazy"
-                            onError={() => markFailed(mediaKey)}
-                          />
-                        ) : (
-                          <div className="relative">
-                            <video
-                              src={src}
-                              preload="none"
-                              className="max-w-full max-h-96 rounded-2xl bg-black"
-                              onError={() => markFailed(mediaKey)}
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/snap:bg-black/40 transition-colors">
-                              <Smartphone className="w-10 h-10 text-white" />
-                            </div>
-                          </div>
-                        )}
-                        <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-yellow-400 text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-xl">
+                        <MediaImage 
+                          src={src} 
+                          path={ref_} 
+                          type={isImg ? "snap" : "snap-video"} 
+                          onClick={() => onOpenMedia(ref_)}
+                          className={isImg 
+                            ? "max-w-full max-h-96 rounded-2xl object-contain group-hover/snap:scale-105 transition-transform duration-500" 
+                            : "max-w-full max-h-96 rounded-2xl bg-black"
+                          }
+                        />
+                        <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-yellow-400 text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-xl pointer-events-none">
                           <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
                           {msg.event_type === "SNAP_VIDEO" ? "Video Snap" : "Snap"}
                         </div>
@@ -241,18 +260,16 @@ const MessageItem = React.memo(({
           {msg.event_type === "STICKER" && (
             msg.media_references.length > 0 ? (
               <div className="p-2">
-                {msg.media_references.map((_, i) => {
-                  const mediaKey = `${msg.id}-sticker-${i}`;
+                {msg.media_references.map((ref_, i) => {
                   const src = mediaSources[i];
-                  if (isMediaFailed(mediaKey)) return null;
                   return (
-                    <img
+                    <MediaImage 
                       key={i}
-                      src={src}
-                      alt="Sticker"
+                      src={src} 
+                      path={ref_} 
+                      type="image" 
+                      onClick={() => {}}
                       className="max-w-[140px] max-h-[140px] drop-shadow-xl hover:scale-110 transition-transform duration-300"
-                      loading="lazy"
-                      onError={() => markFailed(mediaKey)}
                     />
                   );
                 })}
@@ -295,8 +312,6 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   const [jumpDate, setJumpDate] = useState("");
   const [exporting, setExporting] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const failedMediaRef = useRef<Set<string>>(new Set());
-  const [failedMediaVersion, setFailedMediaVersion] = useState(0);
   const [viewerIndex, setViewerIndex] = useState(-1);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
@@ -366,8 +381,6 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
   useEffect(() => {
     setMessages([]);
     setInitialLoad(true);
-    failedMediaRef.current = new Set();
-    setFailedMediaVersion(0);
     loadMessages();
   }, [conversationId, loadMessages]);
 
@@ -423,17 +436,6 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
       setExporting(false);
     }
   }
-
-  const markFailed = useCallback((key: string) => {
-    if (!failedMediaRef.current.has(key)) {
-      failedMediaRef.current.add(key);
-      setFailedMediaVersion(v => v + 1);
-    }
-  }, []);
-
-  // Stable callback — only identity changes when failedMediaVersion changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const isMediaFailed = useCallback((key: string) => failedMediaRef.current.has(key), [failedMediaVersion]);
 
   const openAtRef = useCallback((ref: string, msgId: string) => {
     const itemIdx = chatMediaItems.findIndex(item => item.path === ref && item.id === msgId);
@@ -552,8 +554,6 @@ export function ChatView({ conversationId, addToast }: ChatViewProps) {
                   isSameSender={isSameSender}
                   showDateSep={showDateSep}
                   onOpenMedia={(ref) => openAtRef(ref, msg.id)}
-                  markFailed={markFailed}
-                  isMediaFailed={isMediaFailed}
                   addToast={addToast}
                 />
               );
