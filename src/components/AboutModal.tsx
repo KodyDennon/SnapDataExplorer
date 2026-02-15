@@ -63,7 +63,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
             <div className="text-center space-y-3 py-4">
               <div className="w-20 h-20 mx-auto rounded-3xl bg-linear-to-br from-brand-500 to-accent-purple p-0.5 shadow-2xl">
                 <div className="w-full h-full rounded-[22px] bg-white dark:bg-surface-900 flex items-center justify-center overflow-hidden">
-                   <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+                   <img src="/logo.jpg" alt="Logo" className="w-12 h-12 object-contain" />
                 </div>
               </div>
               <div>

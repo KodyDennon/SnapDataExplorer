@@ -24,23 +24,6 @@
     <meta property="twitter:description" content="Explore your Snapchat data exports locally. Forensic-grade chat reconstruction and immersive galleries.">
     <meta property="twitter:image" content="https://kodydennon.github.io/SnapDataExplorer/screenshots/dashboard_pro.png">
 
-    <!-- Structured Data (JSON-LD) -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Snap Data Explorer",
-      "operatingSystem": "Windows, macOS, Linux",
-      "applicationCategory": "Utility",
-      "description": "Privacy-first desktop app for exploring Snapchat data exports locally.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
-    }
-    </script>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script>
@@ -65,6 +48,16 @@
                             900: '#151e7a',
                             950: '#0a0d45',
                         }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
                     }
                 }
             }
@@ -74,39 +67,67 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .glass { background: rgba(10, 13, 69, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .hero-gradient { background: radial-gradient(circle at 50% 50%, rgba(51, 68, 255, 0.15) 0%, rgba(0, 0, 0, 0) 70%); }
-        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .reveal { opacity: 0; transition: all 0.8s ease-out; transform: translateY(30px); }
+        
+        .reveal { opacity: 0; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(40px); }
         .reveal.active { opacity: 1; transform: translateY(0); }
+        
+        .screenshot-card { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .screenshot-card:hover { transform: scale(1.02) translateY(-10px); }
+        
+        .lightbox { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            z-index: 1000; 
+            background: rgba(0, 0, 0, 0.95); 
+            backdrop-filter: blur(10px);
+            align-items: center; 
+            justify-content: center; 
+            cursor: zoom-out;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox img { max-width: 90%; max-height: 90vh; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
     </style>
 </head>
-<body class="bg-[#020412] text-white selection:bg-brand-500/30 selection:text-brand-200">
+<body class="bg-[#020412] text-white selection:bg-brand-500/30 selection:text-brand-200 custom-scrollbar">
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <img id="lightbox-img" src="" alt="Zoomed Screenshot">
+        <div class="absolute top-10 right-10 text-white/40 hover:text-white transition-colors cursor-pointer">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </div>
+    </div>
 
     <!-- Navbar -->
     <nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5 h-20 flex items-center">
         <div class="max-w-7xl mx-auto px-6 w-full flex items-center justify-between">
-            <div class="flex items-center gap-3 group cursor-pointer">
-                <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-[0_0_20px_rgba(51,68,255,0.4)] group-hover:scale-110 transition-transform">
+            <div class="flex items-center gap-3 group cursor-pointer" onclick="window.scrollTo(0,0)">
+                <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-[0_0_20px_rgba(51,68,255,0.4)] group-hover:rotate-12 transition-transform">
                     <span class="text-xl font-black">S</span>
                 </div>
                 <span class="font-bold text-lg tracking-tight">Snap Data Explorer</span>
             </div>
             <div class="hidden md:flex items-center gap-10 text-sm font-medium text-white/50">
                 <a href="#features" class="hover:text-white transition-colors">Features</a>
-                <a href="#forensics" class="hover:text-white transition-colors">Forensics</a>
+                <a href="#gallery" class="hover:text-white transition-colors">Gallery</a>
                 <a href="#privacy" class="hover:text-white transition-colors">Privacy</a>
-                <a href="#download" class="bg-brand-500 hover:bg-brand-600 text-white px-5 py-2.5 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(51,68,255,0.3)]">Get Started</a>
+                <a href="#download" class="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2.5 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(51,68,255,0.3)] hover:-translate-y-0.5">Get Started</a>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
     <section class="relative pt-48 pb-32 overflow-hidden hero-gradient">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-brand-500/10 blur-[120px] rounded-full -z-10 animate-pulse-slow"></div>
+        
         <div class="max-w-7xl mx-auto px-6 relative z-10 text-center">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-bold uppercase tracking-widest mb-10 fade-in" style="animation-delay: 0.1s">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-bold uppercase tracking-widest mb-10 reveal active">
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
@@ -114,37 +135,190 @@
                 Release v0.25.1 Available
             </div>
 
-            <h1 class="text-6xl md:text-8xl font-black tracking-tighter leading-[1.05] mb-8 fade-in" style="animation-delay: 0.2s">
+            <h1 class="text-6xl md:text-8xl font-black tracking-tighter leading-[1.05] mb-8 reveal active">
                 Your Snapchat History,<br>
                 <span class="bg-clip-text text-transparent bg-linear-to-r from-brand-400 via-indigo-400 to-purple-400">Under Your Control.</span>
             </h1>
 
-            <p class="max-w-2xl mx-auto text-lg md:text-xl text-white/50 leading-relaxed mb-12 fade-in" style="animation-delay: 0.3s">
+            <p class="max-w-2xl mx-auto text-lg md:text-xl text-white/50 leading-relaxed mb-12 reveal active">
                 The most powerful local-first forensic tool for Snapchat exports. Reconstruct lost conversations, index your entire media gallery, and search through years of history instantly.
             </p>
 
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in" style="animation-delay: 0.4s">
-                <a href="#download" class="w-full sm:w-auto px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-brand-50 hover:text-brand-700 transition-all text-center">
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 reveal active">
+                <a href="#download" class="w-full sm:w-auto px-10 py-5 bg-white text-black font-bold rounded-2xl hover:bg-brand-50 hover:text-brand-700 transition-all text-center hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]">
                     Download for Desktop
                 </a>
-                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-all text-center flex items-center justify-center gap-2">
+                <a href="https://github.com/KodyDennon/SnapDataExplorer" class="w-full sm:w-auto px-10 py-5 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-all text-center flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                     Star on GitHub
                 </a>
             </div>
+        </div>
+    </section>
 
-            <!-- Dashboard Preview -->
-            <div class="mt-24 relative fade-in" style="animation-delay: 0.5s">
-                <div class="absolute -inset-1 bg-linear-to-r from-brand-500 to-indigo-500 rounded-[2.5rem] blur-2xl opacity-20"></div>
-                <div class="relative rounded-3xl border border-white/10 bg-[#0A0D2E] overflow-hidden shadow-2xl">
-                    <img src="screenshots/dashboard_pro.png" alt="Snap Data Explorer Dashboard" class="w-full">
+    <!-- UI Snapshot Carousel -->
+    <section id="gallery" class="py-32 bg-white/[0.02] border-y border-white/5 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="mb-16 reveal">
+                <h2 class="text-4xl md:text-5xl font-black mb-6 tracking-tight">Interactive Showcase</h2>
+                <p class="text-white/40 max-w-xl text-lg">Click on any module to expand and explore the interface details.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Dashboard -->
+                <div class="screenshot-card group cursor-zoom-in reveal" onclick="openLightbox('screenshots/dashboard_pro.png')">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Enlarge Dashboard</span>
+                        </div>
+                        <div class="p-3 bg-gray-800/50 flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                            <div class="ml-2 text-[10px] text-white/20 font-mono tracking-widest uppercase">Forensic_Dashboard.sys</div>
+                        </div>
+                        <img src="screenshots/dashboard_pro.png" alt="Dashboard" class="w-full">
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-bold mb-2">Pro Analytics Dashboard</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">Visualize message velocity, top contacts, and archive health in real-time. Forensic-grade data integrity reporting built-in.</p>
+                    </div>
+                </div>
+
+                <!-- Chat View -->
+                <div class="screenshot-card group cursor-zoom-in reveal" onclick="openLightbox('screenshots/chat_view.png')" style="transition-delay: 0.1s">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Inspect Chat History</span>
+                        </div>
+                        <div class="p-3 bg-gray-800/50 flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                            <div class="ml-2 text-[10px] text-white/20 font-mono tracking-widest uppercase">Conversation_Reconstructor.bin</div>
+                        </div>
+                        <img src="screenshots/chat_view.png" alt="Chat View" class="w-full">
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-bold mb-2">Advanced Chat Recovery</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">Stitches together fragmented JSON and HTML subpages to recreate perfect conversation threads with full media context.</p>
+                    </div>
+                </div>
+
+                <!-- Gallery View -->
+                <div class="screenshot-card group cursor-zoom-in reveal" onclick="openLightbox('screenshots/gallery_view.png')" style="transition-delay: 0.2s">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Explore Gallery</span>
+                        </div>
+                        <div class="p-3 bg-gray-800/50 flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                            <div class="ml-2 text-[10px] text-white/20 font-mono tracking-widest uppercase">Media_Indexer_V2.obj</div>
+                        </div>
+                        <img src="screenshots/gallery_view.png" alt="Gallery View" class="w-full">
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-bold mb-2">Virtualized Media Stream</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">Browse tens of thousands of media files instantly. High-performance virtualization ensures zero lag even with huge archives.</p>
+                    </div>
+                </div>
+
+                <!-- Search View -->
+                <div class="screenshot-card group cursor-zoom-in reveal" onclick="openLightbox('screenshots/search_view.png')">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Instant Search</span>
+                        </div>
+                        <div class="p-3 bg-gray-800/50 flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                            <div class="ml-2 text-[10px] text-white/20 font-mono tracking-widest uppercase">FTS5_Search_Engine.sys</div>
+                        </div>
+                        <img src="screenshots/search_view.png" alt="Search View" class="w-full">
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-bold mb-2">Full-Text Archive Search</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">Search through years of history in milliseconds. Find that specific message, link, or media reference across all contacts.</p>
+                    </div>
+                </div>
+
+                <!-- Memories View -->
+                <div class="screenshot-card group cursor-zoom-in reveal" onclick="openLightbox('screenshots/memories_view.png')" style="transition-delay: 0.1s">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Relive Memories</span>
+                        </div>
+                        <div class="p-3 bg-gray-800/50 flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                            <div class="ml-2 text-[10px] text-white/20 font-mono tracking-widest uppercase">Memories_Vault.lib</div>
+                        </div>
+                        <img src="screenshots/memories_view.png" alt="Memories View" class="w-full">
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-bold mb-2">Saved Memories Vault</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">Access your saved Snapchat memories with full metadata. Organized by date and location for easy nostalgic exploration.</p>
+                    </div>
+                </div>
+
+                <!-- Setup Flow -->
+                <div class="screenshot-card group cursor-zoom-in reveal" onclick="openLightbox('screenshots/setup_flow.png')" style="transition-delay: 0.2s">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Easy Import</span>
+                        </div>
+                        <div class="p-3 bg-gray-800/50 flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                            <div class="ml-2 text-[10px] text-white/20 font-mono tracking-widest uppercase">Data_Ingestion_Wizard.bin</div>
+                        </div>
+                        <img src="screenshots/setup_flow.png" alt="Setup Flow" class="w-full">
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-xl font-bold mb-2">Streamlined Data Import</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">Drop your .zip export directly into the app. Our intelligent parser handles multi-part archives and links media automatically.</p>
+                    </div>
+                </div>
+
+                <!-- Chill Mode -->
+                <div class="screenshot-card group cursor-zoom-in reveal lg:col-span-2" onclick="openLightbox('screenshots/chill_mode.png')">
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-gray-900 shadow-2xl h-[400px]">
+                        <div class="absolute inset-0 bg-brand-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
+                            <span class="px-6 py-3 bg-white text-black font-bold rounded-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">Enter Zen Mode</span>
+                        </div>
+                        <img src="screenshots/chill_mode.png" alt="Chill Mode" class="w-full h-full object-cover">
+                        <div class="absolute bottom-6 left-6 p-4 glass rounded-2xl">
+                            <span class="text-[10px] font-mono text-brand-400 font-bold uppercase tracking-widest">Aesthetic View Mode</span>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="text-2xl font-black mb-2 tracking-tight">Immersive Chill Mode</h4>
+                        <p class="text-sm text-white/40 leading-relaxed">A focus-first, immersive media environment. Parallax background animations and a minimalist UI for pure nostalgic browsing.</p>
+                    </div>
+                </div>
+
+                <!-- Open Source / GitHub -->
+                <div class="screenshot-card bg-brand-500 rounded-3xl p-8 flex flex-col justify-between group reveal">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-8">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        </div>
+                        <h4 class="text-2xl font-black mb-4">Community Driven</h4>
+                        <p class="text-white/80 leading-relaxed mb-10">100% open source and developed by AI under human guidance. Join hundreds of users who trust Snap Explorer for their digital forensics.</p>
+                    </div>
+                    <a href="https://github.com/KodyDennon/SnapDataExplorer" class="px-6 py-3 bg-white text-brand-700 font-bold rounded-xl text-center hover:bg-brand-50 transition-colors">Visit Repository</a>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Features Bento Grid -->
-    <section id="features" class="py-32 bg-white/[0.02]">
+    <section id="features" class="py-32">
         <div class="max-w-7xl mx-auto px-6">
             <div class="mb-20 text-center reveal">
                 <h2 class="text-4xl md:text-5xl font-black mb-6 tracking-tight">Engineered for Deep Analysis</h2>
@@ -153,186 +327,166 @@
 
             <div class="grid grid-cols-1 md:grid-cols-12 gap-6 reveal">
                 <!-- Chat Reconstruction -->
-                <div class="md:col-span-8 group relative rounded-3xl bg-white/[0.03] border border-white/5 p-8 overflow-hidden hover:bg-white/[0.05] transition-colors">
+                <div class="md:col-span-8 group relative rounded-[2.5rem] bg-white/[0.03] border border-white/5 p-12 overflow-hidden hover:bg-white/[0.05] transition-all hover:border-white/10">
                     <div class="relative z-10 max-w-md">
-                        <h3 class="text-2xl font-bold mb-4">Intelligent Chat Reconstruction</h3>
-                        <p class="text-white/40 mb-8">Merged analysis of HTML subpages and JSON metadata allows us to rebuild conversations exactly as they appeared, including deleted media references and group participants.</p>
-                        <ul class="space-y-3 text-sm font-medium text-white/60">
-                            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Full Group Thread Recovery</li>
-                            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Sub-second Thread Stitching</li>
-                            <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Media ID Linking</li>
-                        </ul>
+                        <div class="w-12 h-12 rounded-2xl bg-brand-500/10 flex items-center justify-center mb-8 text-brand-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                        </div>
+                        <h3 class="text-3xl font-bold mb-6">Intelligent Chat Reconstruction</h3>
+                        <p class="text-white/40 mb-10 text-lg leading-relaxed">Merged analysis of HTML subpages and JSON metadata allows us to rebuild conversations exactly as they appeared, including deleted media references and group participants.</p>
+                        <div class="flex flex-wrap gap-3">
+                            <span class="px-4 py-2 bg-white/5 rounded-xl text-xs font-bold text-white/60">HTML/JSON Stitching</span>
+                            <span class="px-4 py-2 bg-white/5 rounded-xl text-xs font-bold text-white/60">Media Linking</span>
+                            <span class="px-4 py-2 bg-white/5 rounded-xl text-xs font-bold text-white/60">Deleted Ref Recovery</span>
+                        </div>
                     </div>
-                    <img src="screenshots/chat_view.png" class="absolute top-1/2 -right-20 -translate-y-1/2 w-[60%] rounded-2xl shadow-2xl group-hover:-translate-x-5 transition-transform duration-500 hidden md:block border border-white/10" alt="Chat View">
+                    <div class="absolute -right-10 top-20 w-[60%] animate-float hidden md:block opacity-40 group-hover:opacity-100 transition-opacity">
+                        <img src="screenshots/chat_view.png" class="rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10" alt="Chat View">
+                    </div>
                 </div>
 
                 <!-- SQLite FTS5 -->
-                <div class="md:col-span-4 rounded-3xl bg-white/[0.03] border border-white/5 p-8 hover:bg-white/[0.05] transition-colors">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 text-indigo-400">
+                <div class="md:col-span-4 rounded-[2.5rem] bg-white/[0.03] border border-white/5 p-12 hover:bg-white/[0.05] transition-all">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-8 text-indigo-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </div>
-                    <h3 class="text-xl font-bold mb-4">Forensic Search</h3>
-                    <p class="text-white/40 text-sm leading-relaxed mb-6">Powered by SQLite FTS5 (Full-Text Search), our indexer allows you to search millions of messages in under 100ms. Search by content, sender, or date range.</p>
-                    <div class="p-3 bg-black/40 rounded-xl font-mono text-[10px] text-white/30">
-                        SELECT * FROM messages_fts WHERE content MATCH 'pizza';
+                    <h3 class="text-2xl font-bold mb-6">Forensic Search</h3>
+                    <p class="text-white/40 leading-relaxed mb-8">Powered by SQLite FTS5 (Full-Text Search), our indexer allows you to search millions of messages in under 100ms. Search by content, sender, or date range.</p>
+                    <div class="p-5 bg-black/40 rounded-2xl border border-white/5 font-mono text-xs text-brand-400 overflow-hidden">
+                        <span class="text-white/20">SQL ></span> SELECT * FROM messages_fts WHERE content MATCH 'pizza' LIMIT 50;
                     </div>
-                </div>
-
-                <!-- Gallery -->
-                <div class="md:col-span-5 rounded-3xl bg-white/[0.03] border border-white/5 p-8 overflow-hidden group">
-                    <h3 class="text-xl font-bold mb-4">Immersive Media Gallery</h3>
-                    <p class="text-white/40 text-sm leading-relaxed mb-8">Virtualised grid architecture handles thousands of images and videos without skipping a beat. Every asset is linked back to its original chat event.</p>
-                    <img src="screenshots/gallery_view.png" class="rounded-xl border border-white/10 group-hover:scale-105 transition-transform duration-700" alt="Gallery View">
                 </div>
 
                 <!-- Privacy Deep Dive -->
-                <div id="privacy" class="md:col-span-7 rounded-3xl bg-linear-to-br from-brand-600 to-indigo-700 p-8 relative overflow-hidden group">
-                    <div class="relative z-10">
-                        <div class="inline-flex px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">Security Architecture</div>
-                        <h3 class="text-3xl font-black mb-6 leading-tight">100% Local.<br>100% Network Isolated.</h3>
-                        <p class="text-white/80 max-w-sm mb-8">Built with Rust and Tauri, the application is physically incapable of making network requests. Your data is indexed into a local encrypted SQLite database and stays on your machine.</p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-black/20 p-4 rounded-2xl">
-                                <div class="font-bold mb-1">Zero Telemetry</div>
-                                <div class="text-xs text-white/60">No usage tracking or analytics.</div>
+                <div id="privacy" class="md:col-span-12 rounded-[2.5rem] bg-linear-to-br from-brand-600 via-brand-700 to-indigo-800 p-12 relative overflow-hidden group">
+                    <div class="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div>
+                            <div class="inline-flex px-4 py-1.5 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest mb-8">Air-Gapped Privacy Architecture</div>
+                            <h3 class="text-5xl font-black mb-8 leading-tight tracking-tighter">Physically Isolated.<br>By Design.</h3>
+                            <p class="text-white/80 text-lg mb-12 max-w-xl">Built with Rust and Tauri, Snap Explorer is architecturally forbidden from establishing network connections. Your data never leaves the local sandbox.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div>
+                                    <div class="text-2xl font-black mb-1">0.0%</div>
+                                    <div class="text-[10px] font-bold uppercase tracking-widest text-white/60">Telemetry</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-black mb-1">Local</div>
+                                    <div class="text-[10px] font-bold uppercase tracking-widest text-white/60">SQLite DB</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-black mb-1">None</div>
+                                    <div class="text-[10px] font-bold uppercase tracking-widest text-white/60">Cloud Sync</div>
+                                </div>
                             </div>
-                            <div class="bg-black/20 p-4 rounded-2xl">
-                                <div class="font-bold mb-1">Open Source</div>
-                                <div class="text-xs text-white/60">Public code for full auditing.</div>
+                        </div>
+                        <div class="relative hidden lg:block">
+                            <div class="w-full h-80 rounded-3xl bg-black/20 border border-white/10 flex items-center justify-center backdrop-blur-md">
+                                <svg class="w-32 h-32 text-white/10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="p-6 glass rounded-2xl border border-white/20 animate-pulse">
+                                        <span class="font-mono text-xs font-bold tracking-widest">ENCRYPTED_LOCAL_STORAGE: OK</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <svg class="absolute -right-20 -bottom-20 w-80 h-80 text-white/5 rotate-12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                    <div class="absolute -right-20 -bottom-20 w-96 h-96 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Forensic Mode vs Chill Mode -->
-    <section id="forensics" class="py-32">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                <div class="reveal">
-                    <h2 class="text-4xl md:text-5xl font-black mb-8 tracking-tight">Two Modes.<br>Two Perspectives.</h2>
-                    
-                    <div class="space-y-10">
-                        <div class="flex gap-6">
-                            <div class="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center shrink-0 shadow-lg">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-bold mb-2">Pro (Forensic) Mode</h4>
-                                <p class="text-white/40 leading-relaxed">Deep analysis dashboard. Track message velocity over years, identify top contacts through frequency mapping, and audit your archive health with automated data integrity reports.</p>
-                            </div>
-                        </div>
-
-                        <div class="flex gap-6">
-                            <div class="w-14 h-14 rounded-2xl bg-purple-500 flex items-center justify-center shrink-0 shadow-lg">
-                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-bold mb-2">Chill (Immersive) Mode</h4>
-                                <p class="text-white/40 leading-relaxed">Escape the data. A high-fidelity, aesthetic media browser that turns your Snapchat history into a visually immersive gallery. Perfect for rediscovering old memories without the noise.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="relative reveal">
-                    <div class="absolute -inset-1 bg-purple-500/20 blur-2xl rounded-3xl"></div>
-                    <div class="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                        <img src="screenshots/chill_mode.png" alt="Chill Mode" class="w-full">
-                        <div class="absolute bottom-6 left-6 right-6 p-4 glass rounded-2xl text-xs font-mono text-white/60">
-                            VIEW_MODE: "chill" | PARALLAX_ENABLED: true
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Technical Specs -->
-    <section class="py-32 border-t border-white/5 bg-white/[0.01]">
-        <div class="max-w-7xl mx-auto px-6">
-            <h2 class="text-3xl font-black mb-16 text-center reveal">Technical Stack</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 reveal">
-                <div class="p-8 rounded-3xl bg-white/[0.03] border border-white/5 text-center">
-                    <div class="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">Core</div>
-                    <div class="text-2xl font-bold">Rust</div>
-                </div>
-                <div class="p-8 rounded-3xl bg-white/[0.03] border border-white/5 text-center">
-                    <div class="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">UI Engine</div>
-                    <div class="text-2xl font-bold">React 19</div>
-                </div>
-                <div class="p-8 rounded-3xl bg-white/[0.03] border border-white/5 text-center">
-                    <div class="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">Database</div>
-                    <div class="text-2xl font-bold">SQLite 3</div>
-                </div>
-                <div class="p-8 rounded-3xl bg-white/[0.03] border border-white/5 text-center">
-                    <div class="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">Runtime</div>
-                    <div class="text-2xl font-bold">Tauri v2</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Download CTA -->
-    <section id="download" class="py-32 relative overflow-hidden">
-        <div class="absolute inset-0 bg-brand-500 opacity-5"></div>
+    <!-- Download Section -->
+    <section id="download" class="py-48 relative overflow-hidden">
         <div class="max-w-5xl mx-auto px-6 text-center relative z-10 reveal">
-            <h2 class="text-5xl md:text-7xl font-black mb-8 tracking-tighter leading-tight">Ready to Reclaim Your History?</h2>
-            <p class="text-white/40 text-lg mb-12 max-w-2xl mx-auto leading-relaxed">
-                Download Snap Data Explorer today. It's free, open-source, and privacy-respecting by default. No account or internet required.
+            <h2 class="text-6xl md:text-8xl font-black mb-12 tracking-tighter leading-tight">Ready to Reclaim Your History?</h2>
+            <p class="text-white/40 text-xl mb-16 max-w-2xl mx-auto leading-relaxed">
+                Download Snap Data Explorer for free. Open source, privacy-first, and 100% local.
             </p>
             
-            <div class="flex flex-wrap gap-4 justify-center items-center mb-8">
-                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="px-8 py-4 bg-white text-black font-bold rounded-2xl hover:scale-105 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                    Download Latest Release
+            <div class="flex flex-wrap gap-6 justify-center items-center mb-12">
+                <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="group relative px-10 py-5 bg-white text-black font-bold rounded-2xl hover:scale-105 transition-all shadow-[0_0_50px_rgba(255,255,255,0.1)]">
+                    <span class="relative z-10">Download Latest Release</span>
                 </a>
-                <a href="getting-started.html" class="px-8 py-4 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">
-                    How to Export My Data
+                <a href="getting-started.html" class="px-10 py-5 bg-white/5 border border-white/10 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">
+                    Installation Guide
                 </a>
             </div>
             
-            <div class="flex items-center justify-center gap-6 text-white/30 text-xs font-mono">
-                <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</span>
-                <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg> Windows</span>
-                <span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.015-.465.044C8.87.689 6.584 3.418 6.584 6.655c0 .134.008.268.022.4-.573.084-1.096.262-1.544.522-.896.519-1.554 1.366-1.823 2.394-.27 1.028-.166 2.11.29 3.05.456.939 1.217 1.658 2.145 2.024-.019.122-.03.246-.03.372 0 2.078 1.291 3.896 3.203 4.62-.05.218-.076.443-.076.672 0 1.73 1.41 3.14 3.14 3.14s3.14-1.41 3.14-3.14c0-.229-.026-.454-.076-.672 1.912-.724 3.203-2.542 3.203-4.62 0-.126-.011-.25-.03-.372.928-.366 1.69-1.085 2.145-2.024.456-.94.56-2.022.29-3.05-.269-1.028-.927-1.875-1.823-2.394-.448-.26-.971-.438-1.544-.522.014-.132.022-.266.022-.4 0-3.237-2.286-5.966-5.455-6.611A4.368 4.368 0 0012.504 0z"/></svg> Linux</span>
+            <div class="flex items-center justify-center gap-10 text-white/30 text-[10px] font-black uppercase tracking-[0.2em]">
+                <span class="flex items-center gap-3"><svg class="w-5 h-5 opacity-40" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> macOS</span>
+                <span class="flex items-center gap-3"><svg class="w-5 h-5 opacity-40" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg> Windows</span>
+                <span class="flex items-center gap-3"><svg class="w-5 h-5 opacity-40" fill="currentColor" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.311.015-.465.044C8.87.689 6.584 3.418 6.584 6.655c0 .134.008.268.022.4-.573.084-1.096.262-1.544.522-.896.519-1.554 1.366-1.823 2.394-.27 1.028-.166 2.11.29 3.05.456.939 1.217 1.658 2.145 2.024-.019.122-.03.246-.03.372 0 2.078 1.291 3.896 3.203 4.62-.05.218-.076.443-.076.672 0 1.73 1.41 3.14 3.14 3.14s3.14-1.41 3.14-3.14c0-.229-.026-.454-.076-.672 1.912-.724 3.203-2.542 3.203-4.62 0-.126-.011-.25-.03-.372.928-.366 1.69-1.085 2.145-2.024.456-.94.56-2.022.29-3.05-.269-1.028-.927-1.875-1.823-2.394-.448-.26-.971-.438-1.544-.522.014-.132.022-.266.022-.4 0-3.237-2.286-5.966-5.455-6.611A4.368 4.368 0 0012.504 0z"/></svg> Linux</span>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="py-20 border-t border-white/5 bg-black">
+    <footer class="py-24 border-t border-white/5 bg-black">
         <div class="max-w-7xl mx-auto px-6">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-10">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-12">
                 <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center font-black text-sm">S</div>
-                        <span class="font-bold tracking-tight">Snap Data Explorer</span>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center font-black text-lg shadow-lg">S</div>
+                        <span class="font-bold text-xl tracking-tight">Snap Data Explorer</span>
                     </div>
-                    <p class="text-white/30 text-xs max-w-xs">An independent forensic tool by Kody Dennon. Not affiliated with Snap Inc. 100% AI Developed.</p>
+                    <p class="text-white/30 text-xs max-w-sm leading-relaxed mb-8">An independent forensic tool by Kody Dennon. Not affiliated with Snap Inc. Developed 100% through AI-Human collaboration using advanced LLM agents.</p>
                 </div>
-                <div class="flex items-center gap-12 text-sm font-medium text-white/40">
-                    <a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white transition-colors">GitHub</a>
-                    <a href="https://github.com/KodyDennon/SnapDataExplorer/blob/main/LICENSE" class="hover:text-white transition-colors">License</a>
-                    <a href="mailto:kodydennon@gmail.com" class="hover:text-white transition-colors">Contact</a>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-16">
+                    <div class="space-y-4">
+                        <div class="text-[10px] font-black text-white/20 uppercase tracking-widest">Product</div>
+                        <ul class="space-y-2 text-sm text-white/50">
+                            <li><a href="#features" class="hover:text-white transition-colors">Features</a></li>
+                            <li><a href="#gallery" class="hover:text-white transition-colors">Gallery</a></li>
+                            <li><a href="getting-started.html" class="hover:text-white transition-colors">Getting Started</a></li>
+                        </ul>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="text-[10px] font-black text-white/20 uppercase tracking-widest">Resources</div>
+                        <ul class="space-y-2 text-sm text-white/50">
+                            <li><a href="https://github.com/KodyDennon/SnapDataExplorer" class="hover:text-white transition-colors">GitHub</a></li>
+                            <li><a href="https://github.com/KodyDennon/SnapDataExplorer/blob/main/LICENSE" class="hover:text-white transition-colors">License</a></li>
+                            <li><a href="mailto:kodydennon@gmail.com" class="hover:text-white transition-colors">Contact</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
-            <div class="mt-20 pt-10 border-t border-white/5 text-[10px] font-mono text-white/20 text-center tracking-widest uppercase">
-                &copy; 2026 Snap Data Explorer &middot; Privacy First &middot; Zero Network Access
+            <div class="mt-24 pt-12 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6 text-[10px] font-mono text-white/20 uppercase tracking-[0.3em]">
+                <span>&copy; 2026 Snap Data Explorer</span>
+                <span class="text-brand-500 font-black">Forensic / Aesthetic / Private</span>
+                <span>All Rights Reserved</span>
             </div>
         </div>
     </footer>
 
     <script>
+        // Lightbox functions
+        function openLightbox(src) {
+            const lb = document.getElementById('lightbox');
+            const img = document.getElementById('lightbox-img');
+            img.src = src;
+            lb.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close on ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
+        });
+
         // Reveal on scroll
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
                 var windowHeight = window.innerHeight;
                 var elementTop = reveals[i].getBoundingClientRect().top;
-                var elementVisible = 150;
+                var elementVisible = 100;
                 if (elementTop < windowHeight - elementVisible) {
                     reveals[i].classList.add("active");
                 }

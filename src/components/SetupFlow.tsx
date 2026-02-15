@@ -121,7 +121,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
         <div className="p-8 border-b border-surface-100 dark:border-surface-800 bg-linear-to-br from-surface-50 to-white dark:from-surface-800 dark:to-brand-950/20">
           <div className="flex items-center gap-5 mb-2">
             <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 shrink-0">
-              <img src="/logo.png" alt="" className="w-10 h-10 object-contain" />
+              <img src="/logo.jpg" alt="" className="w-10 h-10 object-contain" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-surface-900 dark:text-white tracking-tight">

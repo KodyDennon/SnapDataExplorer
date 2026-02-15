@@ -60,7 +60,7 @@ export const generateMockMessages = (convoId: string): Event[] => {
 export const MOCK_MEMORIES: Memory[] = Array.from({ length: 40 }).map((_, i) => ({
   id: `mem${i}`,
   timestamp: new Date(Date.now() - i * 86400000).toISOString(),
-  media_type: i % 3 === 0 ? "video" : "image",
+  media_type: i % 3 === 0 ? "Video" : "Image",
   latitude: 34.0522,
   longitude: -118.2437,
   media_path: `https://picsum.photos/seed/mem${i}/1080/1920`,

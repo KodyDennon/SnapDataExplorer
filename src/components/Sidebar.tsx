@@ -127,7 +127,7 @@ export function Sidebar({
             className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 overflow-hidden"
           >
             <img
-              src="/logo.png"
+              src="/logo.jpg"
               alt="Snap Explorer"
               className="w-8 h-8 object-contain drop-shadow-lg"
               onError={(e) => {

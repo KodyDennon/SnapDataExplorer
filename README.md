@@ -12,9 +12,13 @@
 |:---:|:---:|
 | ![Dashboard Pro](./docs/screenshots/dashboard_pro.png) | ![Chat View](./docs/screenshots/chat_view.png) |
 
-| Immersive Gallery (Chill Mode) |
-|:---:|
-| ![Chill Mode](./docs/screenshots/chill_mode.png) |
+| Media Gallery | Memories View |
+|:---:|:---:|
+| ![Gallery View](./docs/screenshots/gallery_view.png) | ![Memories View](./docs/screenshots/memories_view.png) |
+
+| Immersive Gallery (Chill Mode) | Search History |
+|:---:|:---:|
+| ![Chill Mode](./docs/screenshots/chill_mode.png) | ![Search View](./docs/screenshots/search_view.png) |
 
 A privacy-first desktop app that reconstructs and explores your Snapchat data exports. Browse chat history, search messages, view media galleries, and analyze your archive — all 100% local.
 
