@@ -34,43 +34,48 @@ impl MediaLinker {
     }
 
     fn scan_recursive(&mut self, dir: &Path, file_count: &mut usize, id_indexed: &mut usize) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    self.scan_recursive(&path, file_count, id_indexed);
-                    continue;
-                }
-                if !path.is_file() {
-                    continue;
-                }
+        match fs::read_dir(dir) {
+            Ok(entries) => {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        self.scan_recursive(&path, file_count, id_indexed);
+                        continue;
+                    }
+                    if !path.is_file() {
+                        continue;
+                    }
 
-                let file_name = match path.file_name().and_then(|n| n.to_str()) {
-                    Some(n) => n.to_string(),
-                    None => continue,
-                };
-
-                *file_count += 1;
-
-                // Extract media ID: filename format is "YYYY-MM-DD_<MEDIA_ID>.<ext>"
-                // The ID is everything between the first '_' and the last '.'
-                if let Some(underscore_pos) = file_name.find('_') {
-                    let after_underscore = &file_name[underscore_pos + 1..];
-                    let media_id = if let Some(dot_pos) = after_underscore.rfind('.') {
-                        &after_underscore[..dot_pos]
-                    } else {
-                        after_underscore
+                    let file_name = match path.file_name().and_then(|n| n.to_str()) {
+                        Some(n) => n.to_string(),
+                        None => continue,
                     };
 
-                    if !media_id.is_empty() {
-                        let abs_path = fs::canonicalize(&path).unwrap_or_else(|e| {
-                            log::warn!("MediaLinker: canonicalize failed for {:?}: {}", path, e);
-                            path.clone()
-                        });
-                        self.id_map.insert(media_id.to_string(), abs_path);
-                        *id_indexed += 1;
+                    *file_count += 1;
+
+                    // Extract media ID: filename format is "YYYY-MM-DD_<MEDIA_ID>.<ext>"
+                    // The ID is everything between the first '_' and the last '.'
+                    if let Some(underscore_pos) = file_name.find('_') {
+                        let after_underscore = &file_name[underscore_pos + 1..];
+                        let media_id = if let Some(dot_pos) = after_underscore.rfind('.') {
+                            &after_underscore[..dot_pos]
+                        } else {
+                            after_underscore
+                        };
+
+                        if !media_id.is_empty() {
+                            let abs_path = fs::canonicalize(&path).unwrap_or_else(|e| {
+                                log::warn!("MediaLinker: canonicalize failed for {:?}: {}", path, e);
+                                path.clone()
+                            });
+                            self.id_map.insert(media_id.to_string(), abs_path);
+                            *id_indexed += 1;
+                        }
                     }
                 }
+            }
+            Err(e) => {
+                log::warn!("MediaLinker: failed to read directory {:?}: {}", dir, e);
             }
         }
     }
