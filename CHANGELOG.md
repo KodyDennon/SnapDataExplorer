@@ -1,3 +1,9 @@
+## [0.26.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.25.1...v0.26.0) (2026-02-15)
+
+### Features
+
+* overhaul landing page with screenshots and web-mocking layer ([9caf6c8](https://github.com/KodyDennon/SnapDataExplorer/commit/9caf6c891c3f27923be0ce4088f01811464ceaf4))
+
 ## [0.25.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.25.0...v0.25.1) (2026-02-13)
 
 ### Bug Fixes
