@@ -211,8 +211,8 @@
         <div class="max-w-3xl mx-auto px-6 text-center fade-section">
             <h2 class="text-2xl font-bold mb-3">Ready to go?</h2>
             <p class="text-white/40 mb-6">Download Snap Data Explorer and start exploring your archive.</p>
-            <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
-                Download Latest Release
+            <a href="https://github.com/KodyDennon/SnapDataExplorer/releases/latest" id="cta-download" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-light text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                <span id="cta-download-label">Download Latest Release</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             </a>
         </div>
@@ -249,6 +249,67 @@
         const menu = document.getElementById('mobile-menu');
         btn.addEventListener('click', () => menu.classList.toggle('hidden'));
         menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => menu.classList.add('hidden')));
+
+        // Platform Detection and Intelligent Download
+        async function setupIntelligentDownload() {
+            const downloadBtn = document.getElementById('cta-download');
+            const downloadLabel = document.getElementById('cta-download-label');
+
+            const platform = window.navigator.platform.toLowerCase();
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            
+            let os = 'Desktop';
+            let platformKey = '';
+
+            if (platform.includes('mac') || userAgent.includes('mac')) {
+                os = 'macOS';
+                platformKey = 'mac';
+            } else if (platform.includes('win') || userAgent.includes('win')) {
+                os = 'Windows';
+                platformKey = 'win';
+            } else if (platform.includes('linux') || userAgent.includes('linux')) {
+                os = 'Linux';
+                platformKey = 'linux';
+            }
+
+            if (downloadLabel) downloadLabel.innerText = `Download for ${os}`;
+
+            try {
+                const response = await fetch('https://api.github.com/repos/KodyDennon/SnapDataExplorer/releases/latest');
+                const release = await response.json();
+                const assets = release.assets;
+
+                let downloadUrl = '';
+
+                if (platformKey === 'mac') {
+                    const isSilicon = userAgent.includes('arm64') || userAgent.includes('aarch64');
+                    const siliconAsset = assets.find(a => a.name.includes('Apple-Silicon') && a.name.endsWith('.dmg'));
+                    const intelAsset = assets.find(a => a.name.includes('Intel') && a.name.endsWith('.dmg'));
+                    
+                    if (isSilicon && siliconAsset) {
+                        downloadUrl = siliconAsset.browser_download_url;
+                    } else if (!isSilicon && intelAsset) {
+                        downloadUrl = intelAsset.browser_download_url;
+                    } else {
+                        downloadUrl = siliconAsset ? siliconAsset.browser_download_url : (intelAsset ? intelAsset.browser_download_url : '');
+                    }
+                } else if (platformKey === 'win') {
+                    const msiAsset = assets.find(a => a.name.includes('Windows') && a.name.endsWith('.msi'));
+                    const exeAsset = assets.find(a => a.name.includes('Windows') && a.name.endsWith('.exe'));
+                    downloadUrl = msiAsset ? msiAsset.browser_download_url : (exeAsset ? exeAsset.browser_download_url : '');
+                } else if (platformKey === 'linux') {
+                    const appImageAsset = assets.find(a => a.name.includes('Linux') && a.name.endsWith('.AppImage'));
+                    downloadUrl = appImageAsset ? appImageAsset.browser_download_url : '';
+                }
+
+                if (downloadUrl && downloadBtn) {
+                    downloadBtn.href = downloadUrl;
+                }
+            } catch (e) {
+                console.error('Failed to fetch latest release:', e);
+            }
+        }
+        setupIntelligentDownload();
     </script>
 
 </body>
