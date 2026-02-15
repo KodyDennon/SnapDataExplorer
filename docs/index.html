@@ -507,10 +507,35 @@
             
             let os = 'Desktop';
             let platformKey = '';
+            let isSilicon = false;
 
             if (platform.includes('mac') || userAgent.includes('mac')) {
                 os = 'macOS';
                 platformKey = 'mac';
+                
+                // Enhanced detection via WebGL (most reliable for macOS)
+                try {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (debugInfo) {
+                            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_VENDOR_WEBGL) || '';
+                            if (renderer.includes('Apple') && !renderer.includes('Intel')) {
+                                isSilicon = true;
+                                os = 'macOS (Apple Silicon)';
+                            } else if (renderer.includes('Intel')) {
+                                os = 'macOS (Intel)';
+                            }
+                        }
+                    }
+                } catch (e) {}
+                
+                // UA fallback for Silicon
+                if (!isSilicon && (userAgent.includes('arm64') || userAgent.includes('aarch64'))) {
+                    isSilicon = true;
+                    os = 'macOS (Apple Silicon)';
+                }
             } else if (platform.includes('win') || userAgent.includes('win')) {
                 os = 'Windows';
                 platformKey = 'win';
@@ -530,9 +555,6 @@
                 let downloadUrl = '';
 
                 if (platformKey === 'mac') {
-                    // Try to detect Apple Silicon vs Intel
-                    const isSilicon = userAgent.includes('arm64') || userAgent.includes('aarch64');
-                    
                     const siliconAsset = assets.find(a => a.name.includes('Apple-Silicon') && a.name.endsWith('.dmg'));
                     const intelAsset = assets.find(a => a.name.includes('Intel') && a.name.endsWith('.dmg'));
                     
