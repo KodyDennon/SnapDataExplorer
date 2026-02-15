@@ -1,3 +1,12 @@
+## [0.26.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.0...v0.26.1) (2026-02-15)
+
+### Bug Fixes
+
+* **core:** production readiness overhaul ([4f9301b](https://github.com/KodyDennon/SnapDataExplorer/commit/4f9301b85d46b178fe9c876d91799bc7ae11e939)), closes [#21](https://github.com/KodyDennon/SnapDataExplorer/issues/21) [#22](https://github.com/KodyDennon/SnapDataExplorer/issues/22) [#26](https://github.com/KodyDennon/SnapDataExplorer/issues/26) [#24](https://github.com/KodyDennon/SnapDataExplorer/issues/24) [#25](https://github.com/KodyDennon/SnapDataExplorer/issues/25) [#23](https://github.com/KodyDennon/SnapDataExplorer/issues/23)
+* **ingestion:** log warnings on file permission errors during media scan ([4f6938b](https://github.com/KodyDennon/SnapDataExplorer/commit/4f6938b76b9fc9a18d3e67caf0890d6b81559961))
+* stream conversation export to prevent memory exhaustion ([0cd7dbf](https://github.com/KodyDennon/SnapDataExplorer/commit/0cd7dbf2c73e21a5a059af9ef5e86f3c62146910))
+* **ui:** prevent chat list re-renders on media error by isolating state ([7ea6182](https://github.com/KodyDennon/SnapDataExplorer/commit/7ea6182a0498c0696c8c229cbde638dff239936d))
+
 ## [0.26.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.25.1...v0.26.0) (2026-02-15)
 
 ### Features
