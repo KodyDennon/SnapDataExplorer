@@ -6,6 +6,16 @@
 ![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![Downloads](https://img.shields.io/github/downloads/KodyDennon/SnapDataExplorer/total)
 
+## Preview
+
+| Dashboard (Pro Mode) | Chat View |
+|:---:|:---:|
+| ![Dashboard Pro](./docs/screenshots/dashboard_pro.png) | ![Chat View](./docs/screenshots/chat_view.png) |
+
+| Immersive Gallery (Chill Mode) |
+|:---:|
+| ![Chill Mode](./docs/screenshots/chill_mode.png) |
+
 A privacy-first desktop app that reconstructs and explores your Snapchat data exports. Browse chat history, search messages, view media galleries, and analyze your archive — all 100% local.
 
 > **Note:** Not affiliated with Snap Inc. This is an independent open-source project.
