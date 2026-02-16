@@ -1,3 +1,9 @@
+## [0.26.3](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.2...v0.26.3) (2026-02-16)
+
+### Bug Fixes
+
+* trigger release ([58f88a6](https://github.com/KodyDennon/SnapDataExplorer/commit/58f88a6240acd32f07633e7408fae2bc6c3722d6))
+
 ## [0.26.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.1...v0.26.2) (2026-02-16)
 
 ### Bug Fixes
