@@ -5,12 +5,12 @@ import { cn } from "../lib/utils";
 import { ModeToggle, ViewMode } from "./ui/ModeToggle";
 import { GhostLogo } from "./ui/GhostLogo";
 import { motion } from "framer-motion";
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  Search, 
-  Image as ImageIcon, 
-  Cloud, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Search,
+  Image as ImageIcon,
+  Cloud,
   Info,
   Plus,
   RefreshCcw,
@@ -134,7 +134,7 @@ export function Sidebar({
             <p className="text-[10px] font-black uppercase tracking-widest text-brand-500">Forensics</p>
           </div>
         </div>
-        <button 
+        <button
           onClick={onOpenAbout}
           className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-brand-500 transition-all group"
           title="About & Updates"
@@ -171,7 +171,7 @@ export function Sidebar({
             </span>
             {item.label}
             {activePage === item.id && (
-              <motion.div 
+              <motion.div
                 layoutId="nav-pill"
                 className="absolute left-1 w-1 h-5 bg-white rounded-full"
               />
@@ -277,6 +277,12 @@ export function Sidebar({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Footer / Version */}
+      <div className="px-5 py-3 flex items-center justify-between opacity-30 hover:opacity-100 transition-opacity">
+        <span className="text-[9px] font-black uppercase tracking-[0.2em]">v1.0.0</span>
+        <span className="text-[9px] font-bold uppercase tracking-wider">Stable</span>
       </div>
     </div>
   );
