@@ -1,3 +1,9 @@
+## [0.26.2](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.1...v0.26.2) (2026-02-16)
+
+### Bug Fixes
+
+* **ui:** replace broken logo, wire up dashboard actions, fix mode toggle ([06f9c16](https://github.com/KodyDennon/SnapDataExplorer/commit/06f9c16ee7e6872241f85de6916153c62fb239b2))
+
 ## [0.26.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.0...v0.26.1) (2026-02-15)
 
 ### Bug Fixes
