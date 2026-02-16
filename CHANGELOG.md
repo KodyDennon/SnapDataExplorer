@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/KodyDennon/SnapDataExplorer/compare/v1.0.0...v1.0.1) (2026-02-16)
+
+### Bug Fixes
+
+* add version display to sidebar footer ([7e492b0](https://github.com/KodyDennon/SnapDataExplorer/commit/7e492b0d3be2674e25a37cd0d1f8fc9971b9c2e7))
+
 ## [1.0.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.3...v1.0.0) (2026-02-16)
 
 ### Features
