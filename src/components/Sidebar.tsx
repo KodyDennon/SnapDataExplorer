@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ExportSet } from "../types";
 import { cn } from "../lib/utils";
 import { ModeToggle, ViewMode } from "./ui/ModeToggle";
+import { GhostLogo } from "./ui/GhostLogo";
 import { motion } from "framer-motion";
 import { 
   LayoutDashboard, 
@@ -122,19 +123,11 @@ export function Sidebar({
       {/* Logo & Branding */}
       <div className="p-5 border-b border-surface-200 dark:border-surface-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <motion.div 
+          <motion.div
             whileHover={{ rotate: 10, scale: 1.05 }}
-            className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-accent-purple flex items-center justify-center shadow-lg shadow-brand-500/25 overflow-hidden"
+            className="w-10 h-10 rounded-xl shadow-lg shadow-brand-500/25 overflow-hidden"
           >
-            <img
-              src="/logo.jpg"
-              alt="Snap Explorer"
-              className="w-8 h-8 object-contain drop-shadow-lg"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement!.innerHTML = '<span class="text-xl">📊</span>';
-              }}
-            />
+            <GhostLogo className="w-full h-full" />
           </motion.div>
           <div>
             <h1 className="text-base font-bold text-surface-900 dark:text-white">Snap Explorer</h1>

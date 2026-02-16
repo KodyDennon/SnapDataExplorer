@@ -218,7 +218,7 @@ function App() {
               className="flex-1 flex overflow-hidden h-full w-full"
             >
               {activePage === "dashboard" && (
-                <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} />
+                <Dashboard currentExport={currentExport} progress={progress} viewMode={viewMode} onNavigate={setActivePage} />
               )}
 
               {activePage === "chats" && (

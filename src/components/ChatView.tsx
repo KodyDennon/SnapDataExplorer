@@ -30,18 +30,16 @@ function MediaFallback({ type }: { type: "image" | "video" | "snap" | "snap-vide
 }
 
 // Self-contained Media Component to prevent parent re-renders on error
-const MediaImage = React.memo(({ 
-  src, 
-  path, 
-  type, 
-  className, 
-  onClick 
-}: { 
-  src: string, 
-  path: string, 
-  type: "image" | "video" | "snap" | "snap-video", 
+const MediaImage = React.memo(({
+  src,
+  type,
+  className,
+  onClick
+}: {
+  src: string,
+  type: "image" | "video" | "snap" | "snap-video",
   className?: string,
-  onClick: () => void 
+  onClick: () => void
 }) => {
   const [error, setError] = useState(false);
 
@@ -174,7 +172,6 @@ const MessageItem = React.memo(({
                       >
                         <MediaImage 
                           src={src} 
-                          path={ref_} 
                           type={isImg ? "image" : "video"} 
                           onClick={() => onOpenMedia(ref_)}
                           className={isImg 
@@ -213,7 +210,6 @@ const MessageItem = React.memo(({
                       >
                         <MediaImage 
                           src={src} 
-                          path={ref_} 
                           type={isImg ? "snap" : "snap-video"} 
                           onClick={() => onOpenMedia(ref_)}
                           className={isImg 
@@ -260,14 +256,13 @@ const MessageItem = React.memo(({
           {msg.event_type === "STICKER" && (
             msg.media_references.length > 0 ? (
               <div className="p-2">
-                {msg.media_references.map((ref_, i) => {
+                {msg.media_references.map((_ref, i) => {
                   const src = mediaSources[i];
                   return (
-                    <MediaImage 
+                    <MediaImage
                       key={i}
-                      src={src} 
-                      path={ref_} 
-                      type="image" 
+                      src={src}
+                      type="image"
                       onClick={() => {}}
                       className="max-w-[140px] max-h-[140px] drop-shadow-xl hover:scale-110 transition-transform duration-300"
                     />

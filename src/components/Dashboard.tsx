@@ -5,13 +5,14 @@ import { Card, Badge, Button } from "./ui";
 import { cn } from "../lib/utils";
 import { ViewMode } from "./ui/ModeToggle";
 import { DashboardSkeleton } from "./ui/Skeleton";
-import { 
-  BarChart3, 
-  Users, 
-  Image as ImageIcon, 
-  Calendar, 
-  Search, 
-  Zap, 
+import {
+  BarChart3,
+  Users,
+  Image as ImageIcon,
+  Calendar,
+  Search,
+  Zap,
+  Cloud,
   History,
   ShieldCheck,
   AlertTriangle
@@ -22,9 +23,10 @@ interface DashboardProps {
   currentExport: ExportSet | null;
   progress: IngestionProgress | null;
   viewMode: ViewMode;
+  onNavigate?: (page: string) => void;
 }
 
-export function Dashboard({ currentExport, progress, viewMode }: DashboardProps) {
+export function Dashboard({ currentExport, progress, viewMode, onNavigate }: DashboardProps) {
   const [stats, setStats] = useState<ExportStats | null>(null);
   const [validation, setValidation] = useState<ValidationReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,16 +168,10 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
           <p className="text-surface-500 dark:text-surface-400 text-lg">Deep analysis and data reconstruction of your Snapchat export.</p>
         </div>
         
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Search className="w-4 h-4" />
-            Global Search
-          </Button>
-          <Button className="gap-2 bg-brand-600 hover:bg-brand-500">
-            <Zap className="w-4 h-4" />
-            Quick Export
-          </Button>
-        </div>
+        <Button variant="outline" className="gap-2" onClick={() => onNavigate?.("search")}>
+          <Search className="w-4 h-4" />
+          Global Search
+        </Button>
       </header>
 
       {progress && <ProgressCard progress={progress} />}
@@ -215,7 +211,7 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-brand-500/50 cursor-pointer group transition-all">
+            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-brand-500/50 cursor-pointer group transition-all" onClick={() => onNavigate?.("chats")}>
               <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500 group-hover:bg-brand-500 group-hover:text-white transition-all">
                 <History className="w-6 h-6" />
               </div>
@@ -224,7 +220,7 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
                 <p className="text-xs text-surface-500">Jump back into conversations</p>
               </div>
             </Card>
-            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-accent-purple/50 cursor-pointer group transition-all">
+            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-accent-purple/50 cursor-pointer group transition-all" onClick={() => onNavigate?.("gallery")}>
               <div className="w-12 h-12 rounded-xl bg-accent-purple/10 flex items-center justify-center text-accent-purple group-hover:bg-accent-purple group-hover:text-white transition-all">
                 <ImageIcon className="w-6 h-6" />
               </div>
@@ -233,13 +229,13 @@ export function Dashboard({ currentExport, progress, viewMode }: DashboardProps)
                 <p className="text-xs text-surface-500">Browse all visual assets</p>
               </div>
             </Card>
-            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-accent-cyan/50 cursor-pointer group transition-all">
+            <Card variant="surface" className="flex items-center gap-4 p-5 hover:border-accent-cyan/50 cursor-pointer group transition-all" onClick={() => onNavigate?.("memories")}>
               <div className="w-12 h-12 rounded-xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan group-hover:bg-accent-cyan group-hover:text-white transition-all">
-                <ShieldCheck className="w-6 h-6" />
+                <Cloud className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="font-bold text-surface-900 dark:text-white">Data Integrity</h4>
-                <p className="text-xs text-surface-500">Verify your archive health</p>
+                <h4 className="font-bold text-surface-900 dark:text-white">Cloud Memories</h4>
+                <p className="text-xs text-surface-500">Download and explore saved memories</p>
               </div>
             </Card>
           </div>

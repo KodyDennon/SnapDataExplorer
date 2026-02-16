@@ -1,5 +1,5 @@
 import { useUpdater } from "../hooks/useUpdater";
-import { Card } from "./ui";
+import { Card, GhostLogo } from "./ui";
 import { X, Info, Shield, Github, Sparkles, RefreshCw, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getVersion } from "@tauri-apps/api/app";
@@ -62,8 +62,8 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
             {/* App Info */}
             <div className="text-center space-y-3 py-4">
               <div className="w-20 h-20 mx-auto rounded-3xl bg-linear-to-br from-brand-500 to-accent-purple p-0.5 shadow-2xl">
-                <div className="w-full h-full rounded-[22px] bg-white dark:bg-surface-900 flex items-center justify-center overflow-hidden">
-                   <img src="/logo.jpg" alt="Logo" className="w-12 h-12 object-contain" />
+                <div className="w-full h-full rounded-[22px] overflow-hidden">
+                  <GhostLogo className="w-full h-full" />
                 </div>
               </div>
               <div>
