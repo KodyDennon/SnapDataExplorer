@@ -1,3 +1,16 @@
+## [1.0.0](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.3...v1.0.0) (2026-02-16)
+
+### Features
+
+* **stable:** Major version 1.0.0 release.
+* **ui:** Comprehensive polish across Dashboard, SetupFlow, and Chat views.
+* **reconstruction:** Finalized and audited local-first data reconstruction engine.
+
+### Bug Fixes
+
+* **performance:** Resolved connection pool inefficiencies and O(n^2) ingestion bottlenecks.
+* **rendering:** Optimized virtualization in large media galleries and message lists.
+
 ## [0.26.3](https://github.com/KodyDennon/SnapDataExplorer/compare/v0.26.2...v0.26.3) (2026-02-16)
 
 ### Bug Fixes

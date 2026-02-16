@@ -63,16 +63,17 @@ export function Dashboard({ currentExport, progress, viewMode, onNavigate }: Das
   // Chill Mode: Simplified, visually focused dashboard
   if (viewMode === "chill") {
     return (
-      <div className="flex-1 p-8 overflow-y-auto bg-linear-to-br from-surface-900 via-surface-950 to-brand-950">
+      <div className="flex-1 p-8 overflow-y-auto bg-linear-to-br from-surface-900 via-surface-950 to-brand-950 selection:bg-brand-500/30">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.15),transparent_50%)] pointer-events-none" />
         <header className="mb-8 text-center">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl font-bold mb-2 text-white"
           >
             Your Memories
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
@@ -167,7 +168,7 @@ export function Dashboard({ currentExport, progress, viewMode, onNavigate }: Das
           </div>
           <p className="text-surface-500 dark:text-surface-400 text-lg">Deep analysis and data reconstruction of your Snapchat export.</p>
         </div>
-        
+
         <Button variant="outline" className="gap-2" onClick={() => onNavigate?.("search")}>
           <Search className="w-4 h-4" />
           Global Search
@@ -182,23 +183,23 @@ export function Dashboard({ currentExport, progress, viewMode, onNavigate }: Das
         <div className="space-y-8">
           {/* Primary Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard 
-              label="Total Messages" 
-              value={stats.total_messages.toLocaleString()} 
-              icon={<BarChart3 className="w-4 h-4 text-brand-500" />} 
+            <StatCard
+              label="Total Messages"
+              value={stats.total_messages.toLocaleString()}
+              icon={<BarChart3 className="w-4 h-4 text-brand-500" />}
             />
-            <StatCard 
-              label="Conversations" 
-              value={stats.total_conversations.toString()} 
-              icon={<Users className="w-4 h-4 text-accent-purple" />} 
+            <StatCard
+              label="Conversations"
+              value={stats.total_conversations.toString()}
+              icon={<Users className="w-4 h-4 text-accent-purple" />}
             />
-            <StatCard 
-              label="Memories" 
-              value={stats.total_memories.toString()} 
-              icon={<ImageIcon className="w-4 h-4 text-accent-pink" />} 
+            <StatCard
+              label="Memories"
+              value={stats.total_memories.toString()}
+              icon={<ImageIcon className="w-4 h-4 text-accent-pink" />}
             />
-            <StatCard 
-              label="Date Range" 
+            <StatCard
+              label="Date Range"
               icon={<Calendar className="w-4 h-4 text-accent-cyan" />}
             >
               <p className="text-lg font-bold text-surface-900 dark:text-white mt-2">
@@ -317,17 +318,17 @@ export function Dashboard({ currentExport, progress, viewMode, onNavigate }: Das
 
 function AIAttribution() {
   return (
-    <div className="mt-16 pt-8 border-t border-surface-200 dark:border-surface-800 text-center opacity-60 hover:opacity-100 transition-opacity pb-8">
-      <p className="text-xs font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-widest mb-4">
-        Developed 100% by AI
+    <div className="mt-16 pt-8 border-t border-surface-200 dark:border-surface-800 text-center opacity-40 hover:opacity-100 transition-opacity pb-8">
+      <p className="text-[10px] font-bold text-surface-400 dark:text-surface-500 uppercase tracking-[0.2em] mb-3">
+        Engineered with Advanced AI
       </p>
-      <div className="flex flex-wrap justify-center gap-3 text-[10px] font-bold text-surface-600 dark:text-surface-400">
-        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> CLAUDE 4.5
-        </span>
-        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 shadow-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> GEMINI 3
-        </span>
+      <div className="flex justify-center gap-2">
+        <div className="px-3 py-1 bg-surface-100 dark:bg-surface-900 rounded-full border border-surface-200 dark:border-surface-800 text-[9px] font-black text-surface-500">
+          PROTOTYPED BY AI
+        </div>
+        <div className="px-3 py-1 bg-brand-500/10 dark:bg-brand-500/5 rounded-full border border-brand-500/20 text-[9px] font-black text-brand-500">
+          V1.0.0 RELEASE
+        </div>
       </div>
     </div>
   );
@@ -353,7 +354,7 @@ function ProgressCard({ progress }: { progress: IngestionProgress }) {
         />
       </div>
       <p className="text-surface-400 relative z-10">{progress.message}</p>
-      
+
       {/* Decorative background pulse */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 blur-3xl -mr-32 -mt-32 rounded-full animate-pulse" />
     </Card>

@@ -147,27 +147,27 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">1</span>
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20 family-mono">1</span>
                   <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
-                    Sign in to <code className="font-mono text-brand-500 bg-brand-500/10 px-1 rounded-sm">accounts.snapchat.com</code>
+                    Visit <code className="font-mono text-brand-500 bg-brand-500/10 px-1 rounded-sm">accounts.snapchat.com</code>
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">2</span>
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20 family-mono">2</span>
                   <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
-                    Submit a <span className="text-white font-medium">"My Data"</span> download request.
+                    Request your <span className="text-white font-medium">"My Data"</span> export.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">3</span>
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20 family-mono">3</span>
                   <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
-                    Download the <span className="text-white font-medium">ZIP</span> file when notified.
+                    Download the <span className="text-white font-medium">ZIP archive</span> when it's ready.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20">4</span>
+                  <span className="w-6 h-6 rounded-lg bg-brand-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-lg shadow-brand-500/20 family-mono">4</span>
                   <p className="text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
-                    Select that <strong>ZIP</strong> or its extracted folder below.
+                    Select the <strong>ZIP</strong> or its folder below.
                   </p>
                 </div>
               </div>
@@ -307,7 +307,7 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
                     <p className="font-bold tracking-widest uppercase text-xs">Accessing File System...</p>
                   </div>
                 ) : detected.length > 0 ? (
-                    <div className="max-h-[380px] overflow-y-auto pr-2 custom-scrollbar space-y-3 p-1">
+                  <div className="max-h-[380px] overflow-y-auto pr-2 custom-scrollbar space-y-3 p-1">
                     {detected.map((exp) => (
                       <Card
                         key={exp.id}
@@ -332,8 +332,8 @@ export function SetupFlow({ onComplete, progress, addToast }: SetupFlowProps) {
                               {exp.id}
                             </h4>
                             <p className="text-[10px] text-surface-500 font-mono mt-1 truncate max-w-[300px]" title={exp.source_paths.join(', ')}>
-                              {exp.source_paths.length > 1 
-                                ? `${exp.source_paths.length} components detected` 
+                              {exp.source_paths.length > 1
+                                ? `${exp.source_paths.length} components detected`
                                 : exp.source_paths[0]}
                             </p>
                             <div className="flex gap-2 mt-2">
