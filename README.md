@@ -32,7 +32,7 @@ A privacy-first desktop app that reconstructs and explores your Snapchat data ex
 
 ## Features
 
-- **Chat Reconstruction** — Rebuilds complete chat threads from Snapchat HTML + JSON exports
+- **Chat Reconstruction** —  Rebuilds complete chat threads from Snapchat HTML + JSON exports
 - **Full-Text Search** — Instantly search across all conversations with SQLite FTS5
 - **Media Gallery** — Browse all linked photos and videos with lightbox viewer and keyboard navigation
 - **Media Linking** — Automatically matches media files to chat events via Media IDs
